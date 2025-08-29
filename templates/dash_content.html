@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block title %}Content Dashboard{% endblock %}
+{% block content %}
+  <h1>Content Manager</h1>
+  <p>List of manga (read-only demo):</p>
+  <ul>
+  {% for m in mangas %}
+    <li>{{ m.title }}</li>
+  {% else %}
+    <li>No content yet.</li>
+  {% endfor %}
+  </ul>
+{% endblock %}

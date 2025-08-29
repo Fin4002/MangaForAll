@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block title %}Home · MangaForAll{% endblock %}
+{% block content %}
+  <h1>Latest Manga</h1>
+  <div class="grid">
+    {% for m in mangas %}
+      <a class="card" href="{{ url_for('manga_detail', manga_id=m.id) }}">
+        <div class="cover" style="background-image:url('{{ m.cover_url or url_for('static', filename='placeholder.jpg') }}')"></div>
+        <h3>{{ m.title }}</h3>
+        <p>{{ m.author or 'Unknown' }}</p>
+      </a>
+    {% else %}
+      <p>No manga yet. Admin can seed some from /dashboard/admin.</p>
+    {% endfor %}
+  </div>
+{% endblock %}

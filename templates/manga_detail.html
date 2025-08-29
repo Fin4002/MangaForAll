@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block title %}{{ manga.title }}{% endblock %}
+{% block content %}
+  <h1>{{ manga.title }}</h1>
+  <p>{{ manga.description }}</p>
+  <h3>Chapters</h3>
+  <ul>
+  {% for ch in chapters %}
+    <li><a href="{{ url_for('reader', chapter_id=ch.id) }}">Chapter {{ ch.number }}{% if ch.title %}: {{ ch.title }}{% endif %}</a></li>
+  {% else %}
+    <li>No chapters yet.</li>
+  {% endfor %}
+  </ul>
+{% endblock %}

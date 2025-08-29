@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block title %}Reader · Chapter {{ chapter.number }}{% endblock %}
+{% block content %}
+  <h1>{{ chapter.title or ('Chapter ' ~ chapter.number) }}</h1>
+  <div class="reader">
+    {% for p in pages %}
+      <img src="{{ p }}" alt="page {{ loop.index }}" style="width:100%;max-width:900px;margin:0 auto 16px;display:block;">
+    {% else %}
+      <p>No pages for this chapter.</p>
+    {% endfor %}
+  </div>
+{% endblock %}
