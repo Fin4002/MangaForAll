@@ -7,21 +7,24 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-  <header class="site-header">
-    <nav class="nav">
-      <a href="{{ url_for('index') }}">Home</a>
-      <a href="{{ url_for('manga_list') }}">Manga</a>
-      <a href="{{ url_for('forum') }}">Forum</a>
-      {% if user %}
-        <a href="{{ url_for('profile') }}">Profile</a>
-        <a href="{{ url_for('dashboard') }}">Dashboard</a>
-        <a href="{{ url_for('logout') }}">Logout</a>
-      {% else %}
-        <a href="{{ url_for('login') }}">Login</a>
-        <a href="{{ url_for('register') }}">Register</a>
+<header class="site-header">
+  <nav class="nav">
+    <a href="{{ url_for('index') }}">Home</a>
+    <a href="{{ url_for('manga_list') }}">Manga</a>
+    <a href="{{ url_for('forum') }}">Forum</a>
+    {% if user %}
+      <a href="{{ url_for('profile') }}">Profile</a>
+      {% if user.admin_id %}
+        <a href="{{ url_for('admin_dashboard') }}">Dashboard</a>
       {% endif %}
-    </nav>
-  </header>
+      <a href="{{ url_for('logout') }}">Logout</a>
+    {% else %}
+      <a href="{{ url_for('login') }}">Login</a>
+      <a href="{{ url_for('register') }}">Register</a>
+    {% endif %}
+  </nav>
+</header>
+
   <main class="container">
     {% with msgs = get_flashed_messages(with_categories=True) %}
       {% if msgs %}

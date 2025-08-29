@@ -1,5 +1,11 @@
-# app.py
-import os, json, re
+# app.py — Flask + mysql-connector-python, built for YOUR schema
+# Schema used (from your diagram):
+#   users(user_id, username, joining_date, no_of_chapters_read, email)
+#   user_auth(user_id, password_hash, admin_id)
+#   admin(admin_id, name)
+#   manga(manga_id, publication_status, Title, Author_name, synopsis, user_id, admin_id)
+
+import os, re, json, urllib.parse
 from datetime import datetime
 from functools import wraps
 
@@ -7,12 +13,10 @@ from flask import (
     Flask, render_template, redirect, url_for,
     request, flash, session, abort
 )
-from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from sqlalchemy.ext.automap import automap_base
-from sqlalchemy import MetaData, inspect, or_
-
+import mysql.connector
+from mysql.connector import pooling
 
 # ---------------------------
 # Config
@@ -20,318 +24,122 @@ from sqlalchemy import MetaData, inspect, or_
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-change-me')
 
-# Point to your XAMPP MySQL. Change DB/user/pass as needed.
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
-    'DATABASE_URL',
-    'mysql+pymysql://root:@127.0.0.1:3306/mangaforall?charset=utf8mb4'
-)
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+def parse_db_url():
+    # Accept DATABASE_URL like: mysql://user:pass@127.0.0.1:3306/mangaforall
+    url = os.getenv('DATABASE_URL', 'mysql://root:@127.0.0.1:3306/mangaforall')
+    p = urllib.parse.urlparse(url)
+    return {
+        'user': urllib.parse.unquote(p.username or 'root'),
+        'password': urllib.parse.unquote(p.password or ''),
+        'host': p.hostname or '127.0.0.1',
+        'port': p.port or 3306,
+        'database': (p.path or '/mangaforall').lstrip('/'),
+        'charset': 'utf8mb4',
+        'autocommit': False
+    }
 
-db = SQLAlchemy(app)
+DB_CFG = parse_db_url()
+POOL = pooling.MySQLConnectionPool(pool_name="mfa_pool", pool_size=5, **DB_CFG)
 
+def get_conn():
+    return POOL.get_connection()
 
-# ---------------------------
-# Automap existing schema
-# ---------------------------
-metadata = MetaData()
-with app.app_context():
-    metadata.reflect(bind=db.engine)
+def query_all(sql, params=()):
+    with get_conn() as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            cur.execute(sql, params)
+            return cur.fetchall()
 
-Base = automap_base(metadata=metadata)
-Base.prepare()
+def query_one(sql, params=()):
+    rows = query_all(sql, params)
+    return rows[0] if rows else None
 
-# Resolve table -> class with common fallbacks
-def map_class(*names):
-    for n in names:
-        try:
-            return getattr(Base.classes, n)
-        except AttributeError:
-            continue
-    return None
-
-User    = map_class('users', 'user', 'tbl_users', 'account')
-Manga   = map_class('manga', 'mangas', 'tbl_manga', 'manga_list')
-Chapter = map_class('chapters', 'chapter', 'tbl_chapters')
-
-if User is None:
-    raise RuntimeError("Could not find a users table to map. "
-                       "Expected one of: users, user, tbl_users, account")
-
-# Column helpers that tolerate different names
-def col(model, candidates):
-    for name in candidates:
-        if hasattr(model, name):
-            return getattr(model, name)
-    return None
-
-def pk_column(model):
-    # pick first PK column
-    t = model.__table__
-    pks = list(t.primary_key.columns)
-    return pks[0] if pks else None
-
-USER_ID     = pk_column(User)
-USER_NAME   = col(User, ['username', 'user_name', 'name', 'uname', 'login'])
-USER_EMAIL  = col(User, ['email', 'mail', 'email_address'])
-USER_ROLE   = col(User, ['role', 'user_role', 'type', 'level'])
-USER_PASS   = col(User, ['password_hash', 'password', 'pass_hash', 'passwd', 'pwd'])
-
-MANGA_ID    = pk_column(Manga)     if Manga   else None
-MANGA_TITLE = col(Manga, ['title', 'name'])
-MANGA_AUTHOR= col(Manga, ['author', 'writer'])
-MANGA_DESC  = col(Manga, ['description', 'desc', 'summary'])
-MANGA_COVER = col(Manga, ['cover_url', 'cover', 'cover_path'])
-
-CH_ID       = pk_column(Chapter)   if Chapter else None
-CH_MANGA_ID = col(Chapter, ['manga_id', 'mangaId', 'manga_id_fk'])
-CH_NUMBER   = col(Chapter, ['number', 'chapter_no', 'chap_no', 'no', 'num'])
-CH_TITLE    = col(Chapter, ['title', 'name'])
-CH_PAGES    = col(Chapter, ['pages_json', 'pages', 'images_json'])
-
+def execute(sql, params=()):
+    with get_conn() as cnx:
+        with cnx.cursor() as cur:
+            cur.execute(sql, params)
+            cnx.commit()
+            return cur.lastrowid
 
 # ---------------------------
-# Auth helpers
+# Paths
 # ---------------------------
-def get_user_by_pk(uid):
-    if uid is None:
-        return None
-    # db.session.get works with column object + value only in SA 2.0 for models, so filter by pk
-    return db.session.query(User).filter(pk_column(User) == uid).first()
+def resources_root():
+    # static/Resources is the warehouse
+    return os.path.join(app.static_folder, 'Resources')
 
+# ---------------------------
+# Auth helpers strictly per your schema
+# ---------------------------
 def current_user():
-    uid = session.get('uid')
-    return get_user_by_pk(uid)
+    uid = session.get('user_id')
+    if not uid:
+        return None
+    # Join users + user_auth for convenience
+    sql = """
+        SELECT u.user_id, u.username, u.joining_date, u.no_of_chapters_read, u.email,
+               ua.password_hash, ua.admin_id
+        FROM users u
+        LEFT JOIN user_auth ua ON ua.user_id = u.user_id
+        WHERE u.user_id = %s
+    """
+    return query_one(sql, (uid,))
+
+def is_admin(user_row):
+    # In your schema, user_auth.admin_id indicates admin linkage
+    return bool(user_row and user_row.get('admin_id'))
 
 def login_required(fn):
     @wraps(fn)
-    def wrapper(*args, **kwargs):
+    def wrapper(*a, **k):
         if not current_user():
             flash('Login required', 'warning')
             return redirect(url_for('login', next=request.path))
-        return fn(*args, **kwargs)
+        return fn(*a, **k)
     return wrapper
 
-def normalize_role(value):
-    if value is None:
-        return ''
-    if isinstance(value, str):
-        return value.strip().lower()
-    if isinstance(value, int):
-        # crude mapping for numeric roles if your DB uses them
-        mapping = {0: 'member', 1: 'moderator', 2: 'content', 3: 'admin'}
-        return mapping.get(value, str(value))
-    return str(value).lower()
-
-def role_required(*roles):
-    want = {r.lower() for r in roles}
-    def decorator(fn):
-        @wraps(fn)
-        def wrapper(*args, **kwargs):
-            user = current_user()
-            if not user:
-                abort(403)
-            user_role = normalize_role(getattr(user, USER_ROLE.key) if USER_ROLE is not None else '')
-            if user_role not in want:
-                abort(403)
-            return fn(*args, **kwargs)
-        return wrapper
-    return decorator
-
-# Password checker that supports modern hashes and legacy md5/sha1
-HEX_RE = re.compile(r'^[0-9a-fA-F]+$')
-
-def is_md5(s):
-    return isinstance(s, str) and len(s) == 32 and HEX_RE.match(s)
-
-def is_sha1(s):
-    return isinstance(s, str) and len(s) == 40 and HEX_RE.match(s)
-
-def check_and_upgrade_password(user, plain_pwd):
-    if USER_PASS is None:
-        return False
-    stored = getattr(user, USER_PASS.key, None)
-    if not stored:
-        return False
-
-    # Modern werkzeug hash
-    try:
-        if stored.startswith('pbkdf2:') or stored.startswith('scrypt:'):
-            if check_password_hash(stored, plain_pwd):
-                return True
-    except Exception:
-        pass
-
-    # Legacy MD5 / SHA1 compatibility, then upgrade
-    try:
-        import hashlib
-        if is_md5(stored):
-            if hashlib.md5(plain_pwd.encode()).hexdigest() == stored:
-                # upgrade
-                new_hash = generate_password_hash(plain_pwd)
-                setattr(user, USER_PASS.key, new_hash)
-                db.session.commit()
-                return True
-        if is_sha1(stored):
-            if hashlib.sha1(plain_pwd.encode()).hexdigest() == stored:
-                new_hash = generate_password_hash(plain_pwd)
-                setattr(user, USER_PASS.key, new_hash)
-                db.session.commit()
-                return True
-    except Exception:
-        pass
-
-    # Last try: maybe it is a plain text column (yikes)
-    if stored == plain_pwd:
-        try:
-            new_hash = generate_password_hash(plain_pwd)
-            setattr(user, USER_PASS.key, new_hash)
-            db.session.commit()
-        except Exception:
-            pass
-        return True
-    return False
-
+def admin_required(fn):
+    @wraps(fn)
+    def wrapper(*a, **k):
+        u = current_user()
+        if not u or not is_admin(u):
+            abort(403)
+        return fn(*a, **k)
+    return wrapper
 
 # ---------------------------
-# Routes
-# ---------------------------
-@app.route('/')
-def index():
-    mangas = []
-    if Manga:
-        q = db.session.query(Manga)
-        if MANGA_TITLE is not None:
-            q = q.order_by(MANGA_TITLE.asc())
-        elif MANGA_ID is not None:
-            q = q.order_by(MANGA_ID.desc())
-        mangas = q.all()
-    return render_template('index.html', mangas=mangas, user=current_user())
-
-@app.route('/manga')
-def manga_list():
-    mangas = []
-    if Manga:
-        q = db.session.query(Manga)
-        if MANGA_TITLE is not None:
-            q = q.order_by(MANGA_TITLE.asc())
-        mangas = q.all()
-    return render_template('manga.html', mangas=mangas, user=current_user())
-
-@app.route('/manga/<int:manga_id>')
-def manga_detail(manga_id):
-    if not Manga:
-        abort(404)
-    m = db.session.query(Manga).filter(MANGA_ID == manga_id).first() if MANGA_ID is not None else None
-    if not m:
-        abort(404)
-
-    chapters = []
-    if Chapter and CH_MANGA_ID is not None:
-        q = db.session.query(Chapter).filter(CH_MANGA_ID == manga_id)
-        if CH_NUMBER is not None:
-            q = q.order_by(CH_NUMBER.asc())
-        chapters = q.all()
-
-    return render_template('manga_detail.html', manga=m, chapters=chapters, user=current_user())
-
-@app.route('/reader/<int:chapter_id>')
-def reader(chapter_id):
-    if not Chapter:
-        abort(404)
-    ch = db.session.query(Chapter).filter(CH_ID == chapter_id).first() if CH_ID is not None else None
-    if not ch:
-        abort(404)
-    pages = []
-    if CH_PAGES is not None:
-        raw = getattr(ch, CH_PAGES.key)
-        try:
-            pages = json.loads(raw) if raw else []
-        except Exception:
-            pages = []
-    return render_template('reader.html', chapter=ch, pages=pages, user=current_user())
-
-@app.route('/forum')
-def forum():
-    return render_template('forum.html', user=current_user())
-
-@app.route('/profile')
-@login_required
-def profile():
-    return render_template('profile.html', user=current_user())
-
-@app.route('/dashboard')
-@login_required
-def dashboard():
-    user = current_user()
-    role = normalize_role(getattr(user, USER_ROLE.key) if USER_ROLE is not None else '')
-    if role == 'admin':
-        return redirect(url_for('admin_dashboard'))
-    if role == 'moderator':
-        return redirect(url_for('moderator_dashboard'))
-    if role == 'content':
-        return redirect(url_for('content_dashboard'))
-    return redirect(url_for('user_dashboard'))
-
-@app.route('/dashboard/user')
-@login_required
-def user_dashboard():
-    return render_template('dash_user.html', user=current_user())
-
-@app.route('/dashboard/admin')
-@role_required('admin')
-def admin_dashboard():
-    users = db.session.query(User).order_by(
-        (col(User, ['created_at', 'created', 'createdon']) or USER_ID).desc()
-    ).all()
-    return render_template('dash_admin.html', users=users, user=current_user())
-
-@app.route('/dashboard/moderator')
-@role_required('moderator', 'admin')
-def moderator_dashboard():
-    return render_template('dash_moderator.html', user=current_user())
-
-@app.route('/dashboard/content')
-@role_required('content', 'admin')
-def content_dashboard():
-    mangas = []
-    if Manga:
-        mangas = db.session.query(Manga).all()
-    return render_template('dash_content.html', mangas=mangas, user=current_user())
-
-
-# ---------------------------
-# Auth
+# Auth routes (users + user_auth)
 # ---------------------------
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    # Only meaningful if your users table allows inserts and has expected columns
     if request.method == 'POST':
-        if not all([USER_NAME, USER_EMAIL, USER_PASS]):
-            flash('Registration is disabled: users table lacks expected columns.', 'danger')
-            return render_template('register.html')
-
         uname = request.form['username'].strip()
         email = request.form['email'].strip().lower()
         pwd   = request.form['password']
 
-        # Uniqueness check
-        exists = db.session.query(User).filter(
-            or_(USER_NAME == uname, USER_EMAIL == email)
-        ).first()
-        if exists:
+        # Ensure unique username/email
+        dup = query_one("SELECT 1 FROM users WHERE username=%s OR email=%s", (uname, email))
+        if dup:
             flash('User already exists.', 'danger')
             return render_template('register.html')
 
-        # Build instance
-        u = User()
-        setattr(u, USER_NAME.key, uname)
-        setattr(u, USER_EMAIL.key, email)
-        if USER_ROLE is not None:
-            setattr(u, USER_ROLE.key, 'member')
-        setattr(u, USER_PASS.key, generate_password_hash(pwd))
-
-        db.session.add(u)
-        db.session.commit()
+        # Create user, then user_auth
+        with get_conn() as cnx:
+            try:
+                cur = cnx.cursor()
+                cur.execute(
+                    "INSERT INTO users (username, joining_date, no_of_chapters_read, email) "
+                    "VALUES (%s, %s, %s, %s)",
+                    (uname, datetime.utcnow(), 0, email)
+                )
+                new_uid = cur.lastrowid
+                cur.execute(
+                    "INSERT INTO user_auth (user_id, password_hash, admin_id) VALUES (%s, %s, %s)",
+                    (new_uid, generate_password_hash(pwd), None)
+                )
+                cnx.commit()
+            finally:
+                cur.close()
         flash('Registered. Please log in.', 'success')
         return redirect(url_for('login'))
     return render_template('register.html')
@@ -339,73 +147,182 @@ def register():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        if not USER_NAME or not USER_PASS:
-            flash('Login is unavailable: users table lacks expected columns.', 'danger')
-            return render_template('login.html')
-
         uname = request.form['username'].strip()
         pwd   = request.form['password']
 
-        user = db.session.query(User).filter(USER_NAME == uname).first()
-        if user and check_and_upgrade_password(user, pwd):
-            # find PK value to stash in session
-            uid_value = None
-            if USER_ID is not None:
-                uid_value = getattr(user, USER_ID.key)
-            session['uid'] = uid_value
+        sql = """
+          SELECT u.user_id, u.username, ua.password_hash, ua.admin_id
+          FROM users u
+          LEFT JOIN user_auth ua ON ua.user_id = u.user_id
+          WHERE u.username = %s
+        """
+        row = query_one(sql, (uname,))
+        if row and row['password_hash'] and check_password_hash(row['password_hash'], pwd):
+            session['user_id'] = row['user_id']
             flash('Welcome back.', 'success')
-            nxt = request.args.get('next') or url_for('index')
-            return redirect(nxt)
-
+            return redirect(request.args.get('next') or url_for('index'))
         flash('Invalid credentials.', 'danger')
     return render_template('login.html')
 
 @app.route('/logout')
 def logout():
-    session.pop('uid', None)
+    session.clear()
     flash('Logged out.', 'info')
     return redirect(url_for('index'))
 
+# ---------------------------
+# Pages
+# --------------------------- 
+@app.route('/')
+def index():
+    # show latest or alphabetic manga
+    mangas = query_all(f"SELECT manga_id, Title, Author_name, synopsis, publication_status FROM manga ORDER BY Title ASC")
+    return render_template('index.html', mangas=mangas, user=current_user())
+
+@app.route('/manga')
+def manga_list():
+    mangas = query_all("SELECT manga_id, Title, Author_name, synopsis, publication_status FROM manga ORDER BY Title ASC")
+    return render_template('manga.html', mangas=mangas, user=current_user())
+
+@app.route('/manga/<int:manga_id>')
+def manga_detail(manga_id):
+    m = query_one("SELECT * FROM manga WHERE manga_id=%s", (manga_id,))
+    if not m:
+        abort(404)
+    # If you later add chapters/pages tables, you’d query them here.
+    return render_template('manga_detail.html', manga=m, chapters=[], user=current_user())
+
+@app.route('/dashboard/admin')
+@admin_required
+def admin_dashboard():
+    users = query_all("SELECT user_id, username, email, joining_date FROM users ORDER BY joining_date DESC")
+    return render_template('dash_admin.html', users=users, user=current_user())
+
+@app.route('/profile')
+@login_required
+def profile():
+    return render_template('profile.html', user=current_user())
+
+@app.route('/forum')
+def forum():
+    return render_template('forum.html', user=current_user())
 
 # ---------------------------
-# Safe admin seed (no schema changes)
+# Resources → DB sync (creates manga rows only, per your schema)
+# Directory layout:
+#   static/Resources/<MangaTitle>/
+# We set: Title=<folder>, Author_name='Unknown', synopsis='Imported...', publication_status='ongoing'
+# user_id = current user's id if logged in, else NULL
+# admin_id = current admin_id if logged in as admin, else NULL
 # ---------------------------
-from sqlalchemy import inspect as _insp
+IMAGE_EXTS = ('.jpg', '.jpeg', '.png', '.webp', '.gif')
 
-@app.cli.command('seed-admin')
-def seed_admin():
-    """Insert an admin user if none exists. Does NOT create tables."""
-    insp = _insp(db.engine)
-    tables = set(insp.get_table_names())
-    # try common user table names
-    if 'users' not in tables and 'user' not in tables and 'tbl_users' not in tables and 'account' not in tables:
-        print('No users table found. Not seeding.')
-        return
+def list_dir_sorted(path):
+    try:
+        items = os.listdir(path)
+    except FileNotFoundError:
+        return []
+    # natural sort
+    def keyfn(s):
+        return [int(t) if t.isdigit() else t.lower() for t in re.findall(r'\d+|\D+', s)]
+    return sorted(items, key=keyfn)
 
-    if not USER_NAME or not USER_PASS:
-        print('Users table lacks username/password columns. Not seeding.')
-        return
-
-    existing = db.session.query(User).filter(USER_NAME == 'admin').first()
+def ensure_manga_row(title_str, user_row):
+    # Does a manga row with this Title exist?
+    existing = query_one("SELECT manga_id FROM manga WHERE Title=%s", (title_str,))
     if existing:
-        print('Admin already exists.')
-        return
+        return existing['manga_id'], False
 
-    admin = User()
-    setattr(admin, USER_NAME.key, 'admin')
-    if USER_EMAIL:
-        setattr(admin, USER_EMAIL.key, 'admin@example.com')
-    if USER_ROLE:
-        setattr(admin, USER_ROLE.key, 'admin')
-    setattr(admin, USER_PASS.key, generate_password_hash('admin123'))
-    db.session.add(admin)
-    db.session.commit()
-    print('Admin created: admin / admin123')
+    pub_status = 'ongoing'
+    author     = 'Unknown'
+    synopsis   = f'Imported from Resources/{title_str}'
+    uid        = user_row['user_id'] if user_row else None
+    adm        = user_row['admin_id'] if is_admin(user_row) else None
 
+    cols = ["publication_status", "Title", "Author_name", "synopsis", "user_id", "admin_id"]
+    vals = [pub_status, title_str, author, synopsis, uid, adm]
+    placeholders = ",".join(["%s"]*len(vals))
+    new_id = execute(f"INSERT INTO manga ({','.join(cols)}) VALUES ({placeholders})", tuple(vals))
+    return new_id, True
+
+@app.post('/content/sync')
+@login_required
+def sync_from_resources_http():
+    user = current_user()
+    base = resources_root()
+    if not os.path.isdir(base):
+        flash('No static/Resources directory found.', 'warning')
+        return redirect(url_for('content_dashboard') if is_admin(user) else url_for('index'))
+
+    created = 0
+    scanned = 0
+    for folder in list_dir_sorted(base):
+        path = os.path.join(base, folder)
+        if not os.path.isdir(path):
+            continue
+        scanned += 1
+        _, was_new = ensure_manga_row(folder, user)
+        if was_new:
+            created += 1
+
+    flash(f'Scanned {scanned} folders. Created {created} manga rows.', 'success')
+    return redirect(url_for('content_dashboard') if is_admin(user) else url_for('index'))
+
+# Optional: simple content dashboard for non-ORM world
+@app.route('/dashboard/content')
+@login_required
+def content_dashboard():
+    u = current_user()
+    if not is_admin(u):
+        # not an admin but you still want to see the list; adjust as needed
+        mangas = query_all("SELECT manga_id, Title FROM manga ORDER BY Title ASC")
+        return render_template('dash_content.html', mangas=mangas, user=u)
+    mangas = query_all("SELECT manga_id, Title FROM manga ORDER BY Title ASC")
+    return render_template('dash_content.html', mangas=mangas, user=u)
 
 # ---------------------------
-# App entrypoint
+# Admin: create default admin if NOT present
+# This creates: admin(name='Admin'), users + user_auth linked to that admin.
+# ---------------------------
+@app.post('/admin/seed')
+def seed_admin():
+    # If an admin-linked user already exists, bail
+    row = query_one("""
+        SELECT u.user_id FROM users u
+        JOIN user_auth ua ON ua.user_id = u.user_id
+        WHERE ua.admin_id IS NOT NULL
+        LIMIT 1
+    """)
+    if row:
+        flash('An admin already exists.', 'info')
+        return redirect(url_for('admin_dashboard'))
+
+    with get_conn() as cnx:
+        cur = cnx.cursor()
+        try:
+            # 1) create admin row
+            cur.execute("INSERT INTO admin (name) VALUES (%s)", ('Admin',))
+            admin_id = cur.lastrowid
+            # 2) create user
+            cur.execute(
+                "INSERT INTO users (username, joining_date, no_of_chapters_read, email) "
+                "VALUES (%s, %s, %s, %s)",
+                ('admin', datetime.utcnow(), 0, 'admin@example.com')
+            )
+            uid = cur.lastrowid
+            # 3) create auth linking to admin
+            cur.execute(
+                "INSERT INTO user_auth (user_id, password_hash, admin_id) VALUES (%s, %s, %s)",
+                (uid, generate_password_hash('admin123'), admin_id)
+            )
+            cnx.commit()
+            flash('Admin created: admin / admin123', 'success')
+        finally:
+            cur.close()
+    return redirect(url_for('login'))
+
+# ---------------------------
+# Entrypoint
 # ---------------------------
 if __name__ == '__main__':
-    # DO NOT call db.create_all() — your tables already exist.
     app.run(debug=True)
