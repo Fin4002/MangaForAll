@@ -1,13 +1,20 @@
 {% extends 'base.html' %}
-{% block title %}Content Dashboard{% endblock %}
+{% block title %}Content Manager{% endblock %}
 {% block content %}
   <h1>Content Manager</h1>
-  <p>List of manga (read-only demo):</p>
-  <ul>
-  {% for m in mangas %}
-    <li>{{ m.title }}</li>
+  {% if mangas %}
+    <div class="grid">
+      {% for m in mangas %}
+        <div class="card">
+          {% if m.cover_url %}<img src="{{ m.cover_url }}" alt="{{ m.Title }}" style="max-width:200px">{% endif %}
+          <h3>{{ m.Title }}</h3>
+          <p><strong>Author:</strong> {{ m.Author_name }}</p>
+          <p><strong>Status:</strong> {{ m.publication_status }}</p>
+        </div>
+      {% endfor %}
+    </div>
   {% else %}
-    <li>No content yet.</li>
-  {% endfor %}
-  </ul>
+    <p>No manga found in static/Resources.</p>
+  {% endif %}
 {% endblock %}
+

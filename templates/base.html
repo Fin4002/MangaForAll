@@ -16,6 +16,7 @@
       <a href="{{ url_for('profile') }}">Profile</a>
       {% if user.admin_id %}
         <a href="{{ url_for('admin_dashboard') }}">Dashboard</a>
+        <a href="{{ url_for('content_dashboard') }}">Content</a>
       {% endif %}
       <a href="{{ url_for('logout') }}">Logout</a>
     {% else %}

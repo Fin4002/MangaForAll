@@ -1,12 +1,18 @@
 {% extends 'base.html' %}
-{% block title %}Browse Manga{% endblock %}
+{% block title %}Browse Manga · MangaForAll{% endblock %}
 {% block content %}
   <h1>Browse Manga</h1>
-  <ul>
-  {% for m in mangas %}
-    <li><a href="{{ url_for('manga_detail', manga_id=m.id) }}">{{ m.title }}</a></li>
-  {% else %}
-    <li>Empty. Add some in Content Dashboard.</li>
-  {% endfor %}
+  <ul class="manga-list">
+    {% for m in mangas %}
+      <li>
+        <a href="{{ url_for('manga_detail', manga_id=m.id) }}">
+          <span>{{ m.title }}</span>
+          <span class="badge">{{ m.author or 'Unknown' }}</span>
+        </a>
+      </li>
+    {% else %}
+      <li>Empty. Add some in Content Dashboard.</li>
+    {% endfor %}
   </ul>
 {% endblock %}
+

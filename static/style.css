@@ -1,1 +1,217 @@
-/* fallback css */ body{font-family:sans-serif;background:#0f172a;color:#e5e7eb;}
+
+/* =====================================================
+   MangaForAll — cohesive styles for base/index/manga/detail
+   Single source of truth for colors, spacing and layout
+   ===================================================== */
+
+/* 1) Design tokens */
+:root{
+  --bg: #0b1020;
+  --surface: #0f172a;
+  --surface-2:#111827;
+  --text: #e5e7eb;
+  --muted:#9aa4b2;
+  --brand:#60a5fa;
+  --brand-strong:#3b82f6;
+  --accent:#22d3ee;
+  --radius:14px;
+  --shadow:0 12px 30px rgba(0,0,0,.35);
+  --gap:20px;
+}
+
+/* 2) Reset + base */
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji", "Segoe UI Symbol";
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+a{color:inherit;text-decoration:none}
+img{max-width:100%;display:block}
+ul{padding-left:1.1rem}
+
+/* 3) Layout helpers */
+.container{
+  max-width:1100px;
+  margin: 24px auto 80px;
+  padding: 0 20px;
+}
+.grid{
+  display:grid;
+  gap: var(--gap);
+  grid-template-columns: repeat( auto-fill, minmax(250px, 1fr) );
+}
+.card{
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 14px;
+  transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
+  border: 1px solid rgba(255,255,255,.06);
+  display:block;
+}
+.card:hover{
+  transform: translateY(-4px);
+  box-shadow: 0 16px 38px rgba(0,0,0,.45);
+  background: #121a32;
+}
+.card h3{
+  margin:10px 0 4px;
+  font-size: 1.03rem;
+  line-height:1.25;
+}
+.card p{
+  margin:0;
+  color: var(--muted);
+  font-size:.92rem;
+}
+
+/* 4) Cover tiles */
+.cover{
+  border-radius: 10px;
+  width:100%;
+  aspect-ratio: 3/4;
+  background-size: cover;
+  background-position: center;
+  background-color: #0a0f1e;
+  border:1px solid rgba(255,255,255,.06);
+  box-shadow: inset 0 0 1px rgba(255,255,255,.06);
+}
+
+/* 5) Header / Nav */
+.site-header{
+  position: sticky;
+  top:0;
+  z-index:40;
+  background: linear-gradient(180deg, rgba(8,12,24,.85), rgba(8,12,24,.65));
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+.nav{
+  max-width:1100px;
+  margin:0 auto;
+  padding: 12px 20px;
+  display:flex;
+  gap: 14px;
+  align-items:center;
+}
+.nav a{
+  padding: 8px 12px;
+  border-radius: 10px;
+  color: var(--text);
+  transition: background .15s ease, color .15s ease, transform .15s ease;
+  opacity:.92;
+}
+.nav a:hover{
+  background: rgba(96,165,250,.12);
+  color: #eaf2ff;
+  transform: translateY(-1px);
+}
+.nav a.active{
+  background: rgba(96,165,250,.18);
+  color: white;
+  box-shadow: inset 0 0 0 1px rgba(96,165,250,.35);
+}
+
+/* 6) Footer */
+.site-footer{
+  max-width:1100px;
+  margin: 0 auto 28px;
+  padding: 0 20px;
+  color: var(--muted);
+  font-size:.9rem;
+  opacity:.85;
+}
+
+/* 7) Flash messages */
+.flash-wrap{
+  display:grid;
+  gap:10px;
+  margin-bottom:14px;
+}
+.flash{
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #0f1a33;
+  border: 1px solid rgba(255,255,255,.08);
+  color:#cfe3ff;
+  box-shadow: var(--shadow);
+  font-size:.95rem;
+}
+.flash.success{ background: rgba(34,197,94,.12); border-color: rgba(34,197,94,.35); color:#d2ffe1;}
+.flash.error{ background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.35); color:#ffe1e1;}
+.flash.info{ background: rgba(59,130,246,.12); border-color: rgba(59,130,246,.35); color:#dbe9ff;}
+
+/* 8) Typographic helpers */
+h1{font-size: clamp(1.6rem, 1.2rem + 1.2vw, 2.1rem); margin:6px 0 12px}
+h3{font-size:1.05rem}
+p{line-height:1.6}
+
+/* 9) Lists for manga/chapters */
+ul.manga-list, .chapter-list{ list-style:none; padding:0; margin:0; display:grid; gap:10px}
+ul.manga-list li, .chapter-list li{
+  background: var(--surface);
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 12px;
+  padding: 12px 14px;
+  transition: background .15s ease, transform .15s ease;
+}
+ul.manga-list li a, .chapter-list li a{ display:flex; justify-content:space-between; align-items:center }
+ul.manga-list li:hover, .chapter-list li:hover{ background: #121a32; transform: translateY(-1px) }
+.badge{
+  font-size:.78rem;
+  padding:3px 8px;
+  border-radius: 999px;
+  background: rgba(96,165,250,.14);
+  border:1px solid rgba(96,165,250,.35);
+}
+
+/* 10) Reader link buttons (generic) */
+.btn{
+  display:inline-flex; align-items:center; gap:8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(96,165,250,.16);
+  border:1px solid rgba(96,165,250,.35);
+  color:white;
+  text-decoration:none;
+  transition: transform .15s ease, background .15s ease;
+}
+.btn:hover{ transform: translateY(-1px); background: rgba(96,165,250,.22) }
+.btn.secondary{ background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.12); color:#e5e7eb }
+.btn.ghost{ background: transparent; border-color: rgba(255,255,255,.18) }
+
+/* 11) Forms (login/register if needed later) */
+input, select, textarea{
+  width:100%;
+  background: #0a1328;
+  color: var(--text);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius: 10px;
+  padding: 10px 12px;
+  outline: none;
+}
+input:focus, select:focus, textarea:focus{
+  border-color: rgba(96,165,250,.55);
+  box-shadow: 0 0 0 3px rgba(96,165,250,.18);
+}
+label{display:block; margin: 10px 0 6px; color:#c7d2fe}
+.form-row{display:grid; gap:12px; grid-template-columns:1fr 1fr}
+@media (max-width:700px){ .form-row{ grid-template-columns: 1fr } }
+
+/* 12) Utilities */
+.hidden{display:none}
+.muted{color: var(--muted)}
+.row{display:flex; gap:10px; align-items:center}
+.space-between{display:flex; justify-content:space-between; align-items:center}
+hr{border:0; height:1px; background: rgba(255,255,255,.1); margin:16px 0}
+
+/* 13) Accessibility focus-visible */
+:focus-visible{ outline:2px solid var(--brand); outline-offset:2px }
+
+/* 14) Tiny helper for active nav via server */
+a[data-active="true"]{ background: rgba(96,165,250,.18); box-shadow: inset 0 0 0 1px rgba(96,165,250,.35) }

@@ -8,7 +8,6 @@
 import os, re, json, urllib.parse
 from datetime import datetime
 from functools import wraps
-
 from flask import (
     Flask, render_template, redirect, url_for,
     request, flash, session, abort
@@ -267,18 +266,101 @@ def sync_from_resources_http():
 
     flash(f'Scanned {scanned} folders. Created {created} manga rows.', 'success')
     return redirect(url_for('content_dashboard') if is_admin(user) else url_for('index'))
+def natural_sort_keys(s):
+    # "ch.2" before "ch.10"
+    return [int(t) if t.isdigit() else t.lower() for t in re.findall(r'\d+|\D+', s)]
+
+def parse_manga_txt(txt_path):
+    """
+    Expected format (single line, comma-separated):
+      Author_name, publication_status, title
+    Example:
+      Eiichiro Oda, ongoing, One Piece
+    """
+    meta = {"Author_name": "Unknown", "publication_status": "unknown", "Title": None}
+    try:
+        with open(txt_path, "r", encoding="utf-8") as f:
+            line = f.readline().strip()
+        # allow either comma-separated or newline-separated just in case
+        if "," in line:
+            parts = [p.strip() for p in line.split(",")]
+        else:
+            parts = [p.strip() for p in line.splitlines()]
+        # pad to length 3
+        while len(parts) < 3:
+            parts.append("")
+        meta["Author_name"], meta["publication_status"], meta["Title"] = parts[:3]
+    except FileNotFoundError:
+        pass
+    return meta
+
+def read_synopsis(syn_path):
+    try:
+        with open(syn_path, "r", encoding="utf-8") as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        return ""
+
+def scan_resources_content():
+    """
+    Walk static/Resources and return a list of manga dicts:
+      {
+        "Title": ...,
+        "Author_name": ...,
+        "publication_status": ...,
+        "synopsis": ...,
+        "cover_url": "/static/Resources/<folder>/cover.jpg" if exists else None,
+        "folder": "<folder name>",
+        "chapters": ["ch.000", "ch.001", ...]  # sorted naturally
+      }
+    Sorted by Title (case-insensitive). If Title is missing in manga.txt, fallback to folder name.
+    """
+    base = resources_root()
+    items = []
+    if not os.path.isdir(base):
+        return items
+
+    for folder in sorted(
+        [d for d in os.listdir(base) if os.path.isdir(os.path.join(base, d))],
+        key=lambda s: s.lower()
+    ):
+        fpath = os.path.join(base, folder)
+        meta = parse_manga_txt(os.path.join(fpath, "manga.txt"))
+        title = meta.get("Title") or folder
+
+        synopsis = read_synopsis(os.path.join(fpath, "synopsis.txt"))
+        cover_fs = os.path.join(fpath, "cover.jpg")
+        cover_url = f"/static/Resources/{folder}/cover.jpg" if os.path.isfile(cover_fs) else None
+
+        # chapters = subfolders starting with "ch."
+        ch_dirs = [
+            d for d in os.listdir(fpath)
+            if os.path.isdir(os.path.join(fpath, d)) and d.lower().startswith("ch.")
+        ]
+        ch_dirs.sort(key=natural_sort_keys)
+
+        items.append({
+            "Title": title,
+            "Author_name": meta.get("Author_name") or "Unknown",
+            "publication_status": meta.get("publication_status") or "unknown",
+            "synopsis": synopsis,
+            "cover_url": cover_url,
+            "folder": folder,
+            "chapters": ch_dirs
+        })
+
+    # final sort by Title in case manga.txt changed it from the folder name
+    items.sort(key=lambda x: (x["Title"] or "").lower())
+    return items
 
 # Optional: simple content dashboard for non-ORM world
 @app.route('/dashboard/content')
 @login_required
 def content_dashboard():
     u = current_user()
-    if not is_admin(u):
-        # not an admin but you still want to see the list; adjust as needed
-        mangas = query_all("SELECT manga_id, Title FROM manga ORDER BY Title ASC")
-        return render_template('dash_content.html', mangas=mangas, user=u)
-    mangas = query_all("SELECT manga_id, Title FROM manga ORDER BY Title ASC")
+    mangas = scan_resources_content()
     return render_template('dash_content.html', mangas=mangas, user=u)
+
 
 # ---------------------------
 # Admin: create default admin if NOT present
