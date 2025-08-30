@@ -187,6 +187,7 @@ def manga_list():
     """)
     return render_template('manga.html', mangas=mangas, user=current_user())
 
+#work in progress
 @app.route('/manga/<int:manga_id>')
 def manga_detail(manga_id):
     m = query_one("SELECT * FROM manga WHERE manga_id=%s", (manga_id,))
@@ -194,7 +195,7 @@ def manga_detail(manga_id):
         abort(404)
     # gets manga information from manga table for content page
     return render_template('manga_detail.html', manga=m, chapters=[], user=current_user())
-
+#work in progress
 @app.route('/dashboard/admin')
 @admin_required
 def admin_dashboard():
@@ -225,12 +226,6 @@ def natural_sort_keys(s):
     return [int(t) if t.isdigit() else t.lower() for t in re.findall(r'\d+|\D+', s)]
 
 def parse_manga_txt(txt_path):
-    """
-    Expected format (single line, comma-separated):
-      Author_name, publication_status, title
-    Example:
-      Eiichiro Oda, ongoing, One Piece
-    """
     meta = {"Author_name": "Unknown", "publication_status": "unknown", "Title": None}
     try:
         with open(txt_path, "r", encoding="utf-8") as f:
@@ -262,18 +257,6 @@ def chapter_sort_key(name: str):
     return int(m.group()) if m else name.casefold()
 #scans resources folder for manga content in the specified format
 def scan_resources_content():
-    """
-    Walk static/Resources and return a list of manga dicts:
-      {
-        "Title": ...,
-        "Author_name": ...,
-        "publication_status": ...,
-        "synopsis": ...,
-        "cover_url": "/static/Resources/<folder>/cover.jpg" if exists else None,
-        "folder": "<folder name>",
-        "chapters": ["ch.000", "ch.001", ...]  # sorted
-      }
-    """
     base = resources_root()
     items = []
     if not os.path.isdir(base):
@@ -449,10 +432,6 @@ def list_images(folder_path):
 
 @app.route('/reader/<folder>/<chapter>')
 def reader(folder, chapter):
-    """
-    Render pages for a chapter located at:
-      static/Resources/<folder>/<chapter>/
-    """
     base = resources_root()
     chapter_dir = os.path.join(base, folder, chapter)
     if not os.path.isdir(chapter_dir):
