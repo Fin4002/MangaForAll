@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}Content · {{ title }}{% endblock %}
+
+{% block content %}
+  <h1 class="page-title">{{ title }}</h1>
+
+  <div class="grid" style="grid-template-columns: 260px 1fr;">
+    <div class="card">
+      {% if cover_url %}
+        <img src="{{ cover_url }}" alt="{{ title }}">
+      {% else %}
+        <div class="dim">No cover.jpg found</div>
+      {% endif %}
+      <p><strong>Author:</strong> {{ meta.Author_name or 'Unknown' }}</p>
+      <p><strong>Status:</strong> {{ meta.publication_status or 'unknown' }}</p>
+
+      {% if approved %}
+        <span class="btn secondary">Already approved</span>
+      {% else %}
+        <form method="post" action="{{ url_for('content_approve', folder=folder) }}">
+          <button type="submit" class="btn">Approve & Save to DB</button>
+        </form>
+      {% endif %}
+    </div>
+
+    <div class="card" style="text-align:left; align-items:stretch;">
+      {% if synopsis %}
+        <h3>Synopsis</h3>
+        <p>{{ synopsis }}</p>
+        <hr style="border-color:#30363d; margin:16px 0;">
+      {% endif %}
+
+      <h3>Chapters</h3>
+      {% if chapters and chapters|length > 0 %}
+        <ul style="list-style:none; padding:0; margin:0;">
+          {% for ch in chapters %}
+            <li style="margin:6px 0; display:flex; justify-content:space-between; align-items:center;">
+              <span>{{ ch }}</span>
+              <a class="btn ghost" href="{{ url_for('reader', folder=folder, chapter=ch) }}">Open</a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="dim">No chapter folders found. Use names like <code>ch.000</code> or <code>chapter 1</code>.</p>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}
