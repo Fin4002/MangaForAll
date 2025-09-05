@@ -360,49 +360,6 @@ def content_dashboard():
     u = current_user()
     mangas = scan_resources_content()
     return render_template('dash_content.html', mangas=mangas, user=u)
-
-
-# ---------------------------
-# Admin: create default admin if NOT present
-# This creates: admin(name='Admin'), users + user_auth linked to that admin.
-# ---------------------------
-@app.post('/admin/seed')
-def seed_admin():
-    # If an admin-linked user already exists, bail
-    row = query_one("""
-        SELECT u.user_id FROM users u
-        JOIN user_auth ua ON ua.user_id = u.user_id
-        WHERE ua.admin_id IS NOT NULL
-        LIMIT 1
-    """)
-    if row:
-        flash('An admin already exists.', 'info')
-        return redirect(url_for('admin_dashboard'))
-
-    with get_conn() as cnx:
-        cur = cnx.cursor()
-        try:
-            # 1) create admin row
-            cur.execute("INSERT INTO admin (name) VALUES (%s)", ('Admin',))
-            admin_id = cur.lastrowid
-            # 2) create user
-            cur.execute(
-                "INSERT INTO users (username, joining_date, no_of_chapters_read, email) "
-                "VALUES (%s, %s, %s, %s)",
-                ('admin', datetime.utcnow(), 0, 'admin@example.com')
-            )
-            uid = cur.lastrowid
-            # 3) create auth linking to admin
-            cur.execute(
-                "INSERT INTO user_auth (user_id, password_hash, admin_id) VALUES (%s, %s, %s)",
-                (uid, generate_password_hash('admin123'), admin_id)
-            )
-            cnx.commit()
-            flash('Admin created: admin / admin123', 'success')
-        finally:
-            cur.close()
-    return redirect(url_for('login'))
-
 # ---------------------------
 # Entrypoint
 # ---------------------------
