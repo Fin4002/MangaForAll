@@ -4,14 +4,12 @@
   <h1 class="page-title">Latest Manga</h1>
 
   {% if mangas %}
-    <div class="grid grid-3">
+    <div class="grid grid-cards">
       {% for m in mangas %}
-        <a class="card card-link fade-in" href="{{ url_for('manga_detail', manga_id=m.manga_id) if url_for else '#' }}" aria-label="{{ m.Title }}">
-          {% if m.CoverPath %}
-            <div class="cover" style="background-image:url('{{ url_for('static', filename=m.CoverPath) }}')"></div>
-          {% else %}
-            <div class="cover" style="background-image:url('{{ url_for('static', filename='placeholder.jpg') }}')"></div>
-          {% endif %}
+        <a class="card card-link" href="{{ url_for('manga_detail', manga_id=m.manga_id) }}" aria-label="{{ m.Title }}">
+          <img
+            src="{{ url_for('static', filename=m.CoverPath) if m.CoverPath else url_for('static', filename='placeholder.jpg') }}"
+            alt="{{ m.Title }}">
           <div class="card-body">
             <h3 class="card-title">{{ m.Title }}</h3>
             <p class="card-meta">{{ m.Author_name or 'Unknown' }}</p>

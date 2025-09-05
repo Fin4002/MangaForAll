@@ -316,3 +316,49 @@ a {
 .chapter-row:active {
   transform: scale(.997);
 }
+/* Hero header with blurred cover background */
+.hero {
+  position: relative;
+  border-radius: var(--radius);
+  overflow: hidden;
+  padding: 18px 22px;
+  border: 1px solid color-mix(in oklab, var(--text), transparent 92%);
+  background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,0));
+  box-shadow: var(--shadow);
+}
+.hero::before {
+  content: "";
+  position: absolute; inset: -20px;
+  background: var(--hero) center / cover no-repeat;
+  filter: blur(22px) saturate(.85) brightness(.6) grayscale(.2);
+  transform: scale(1.1);
+  opacity: .6;
+}
+.hero::after {
+  /* vignette so text is readable */
+  content: "";
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(120% 100% at 10% 10%, rgba(0,0,0,.45), transparent 60%),
+    linear-gradient(180deg, rgba(0,0,0,.35), rgba(0,0,0,.15));
+}
+.hero-inner { position: relative; display: flex; gap: 18px; align-items: flex-end; }
+
+/* small cover used inside the hero */
+.cover-hero {
+  width: 170px; flex: 0 0 170px;
+  aspect-ratio: 2 / 3;
+  background: center / cover no-repeat #0b0f14;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.35);
+}
+
+/* big title over the hero */
+.hero-title {
+  margin: 0;
+  font-size: clamp(1.8rem, 4vw + .5rem, 3rem);
+  line-height: 1.15;
+  font-weight: 800;
+}
+.hero-meta { display: flex; gap: 10px; flex-wrap: wrap; }
+.hero-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
