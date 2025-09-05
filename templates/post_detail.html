@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}{{ post.title }} · MangaForAll{% endblock %}
+{% block content %}
+
+<h1 class="page-title">{{ post.title }}</h1>
+
+<div class="card mb-6">
+  {% if post.image %}
+    <img src="{{ url_for('post_image_blob', post_id=post.post_id) }}" width="300">
+
+  {% endif %}
+  <div class="card-body">
+    <p class="card-text">{{ post.content }}</p>
+    <p class="card-meta">by {{ post.author }}</p>
+  </div>
+</div>
+
+<hr>
+<h3>Comments</h3>
+<ul class="space-y-2">
+  {% if comments and comments|length > 0 %}
+    {% for c in comments %}
+      <li class="card"><div class="card-body"><b>{{ c.username or 'Anonymous' }}</b>: {{ c.content }}</div></li>
+    {% endfor %}
+  {% else %}
+    <li>No comments yet.</li>
+  {% endif %}
+</ul>
+
+{% if user %}
+  <form method="POST" class="mt-4">
+    <textarea name="content" class="input" required></textarea><br>
+    <button type="submit" class="btn">Add Comment</button>
+  </form>
+{% else %}
+  <p class="mt-4"><a href="{{ url_for('login') }}">Login</a> to comment.</p>
+{% endif %}
+
+{% endblock %}
+

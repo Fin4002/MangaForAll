@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}Content Manager{% endblock %}
+{% block content %}
+  <h1 class="page-title">Content Manager</h1>
+
+  {% if mangas %}
+    <div class="grid">
+      {% for m in mangas %}
+        <div class="card">
+          <!-- Whole top area is a link to the per-manga detail page -->
+          <a href="{{ url_for('content_detail', folder=m.folder) }}" style="text-decoration:none; width:100%;">
+            {% if m.cover_url %}
+              <img src="{{ m.cover_url }}" alt="{{ m.Title }}">
+            {% endif %}
+            <h3>{{ m.Title }}</h3>
+          </a>
+
+          <p><strong>Author:</strong> {{ m.Author_name }}</p>
+          <p><strong>Status:</strong> {{ m.publication_status }}</p>
+          <p><strong>Chapters:</strong> {{ m.chapters|length }}</p>
+
+          <!-- Redundant but friendly: explicit button to open -->
+          <a class="btn" href="{{ url_for('content_detail', folder=m.folder) }}">Open</a>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p>No manga found in <code>static/Resources</code>. Shocking.</p>
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block title %}Reader · {{ chapter.title }}{% endblock %}
+{% block content %}
+  <div class="reader-shell">
+    <h1>{{ chapter.title }}</h1>
+
+    <div style="display:flex; gap:10px; margin:12px 0;">
+      {% if prev_chapter %}
+        <a id="prev-chapter-btn" class="btn secondary"
+           href="{{ url_for('reader', folder=folder, chapter=prev_chapter) }}">Prev</a>
+      {% else %}
+        <button id="prev-chapter-btn" disabled>Prev</button>
+      {% endif %}
+
+      {% if next_chapter %}
+        <a id="next-chapter-btn" class="btn secondary"
+           href="{{ url_for('reader', folder=folder, chapter=next_chapter) }}">Next</a>
+      {% else %}
+        <button id="next-chapter-btn" disabled>Next</button>
+      {% endif %}
+    </div>
+
+    {% if pages %}
+      {% for p in pages %}
+        <img src="{{ p }}" class="page-img" alt="page {{ loop.index }}">
+      {% endfor %}
+    {% else %}
+      <p>No pages for this chapter.</p>
+    {% endif %}
+
+    <div style="display:flex; gap:10px; margin:12px 0;">
+      {% if prev_chapter %}
+        <a id="prev-chapter-btn-bottom" class="btn secondary"
+           href="{{ url_for('reader', folder=folder, chapter=prev_chapter) }}">Prev</a>
+      {% else %}
+        <button id="prev-chapter-btn-bottom" disabled>Prev</button>
+      {% endif %}
+
+      {% if next_chapter %}
+        <a id="next-chapter-btn-bottom" class="btn secondary"
+           href="{{ url_for('reader', folder=folder, chapter=next_chapter) }}">Next</a>
+      {% else %}
+        <button id="next-chapter-btn-bottom" disabled>Next</button>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

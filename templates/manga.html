@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block title %}Browse Manga · MangaForAll{% endblock %}
+{% block content %}
+  <h1 class="page-title">Browse Manga</h1>
+
+  {% if mangas %}
+    <div class="grid grid-cards">
+      {% for m in mangas %}
+        <a class="card card-link" href="{{ url_for('manga_detail', manga_id=m.manga_id) }}" aria-label="{{ m.Title }}">
+          <img
+            src="{{ url_for('static', filename=m.CoverPath) if m.CoverPath else url_for('static', filename='placeholder.jpg') }}"
+            alt="{{ m.Title }}">
+          <div class="card-body">
+            <h3 class="card-title">{{ m.Title }}</h3>
+            <p class="card-meta">{{ m.Author_name or 'Unknown' }}</p>
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p>Empty. Approve something first.</p>
+  {% endif %}
+{% endblock %}
