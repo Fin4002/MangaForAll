@@ -299,9 +299,15 @@ a {
 }
 .detail-grid {
   grid-template-columns: 320px 1fr;
-  align-items: start;  /* stop stretching the left card */
+  align-items: start;   /* stop left card from stretching full height */
 }
-
+/* make synopsis easier to read */
+.synopsis {
+  font-size: 1rem;
+  line-height: 1.55;
+  color: var(--text);
+  margin: 0;
+}
 .cover.fill {
   background-size: cover;  /* make cover fill box instead of letterbox */
 }
@@ -315,6 +321,10 @@ a {
 }
 .chapter-row:active {
   transform: scale(.997);
+}
+.chapter-row td {
+  font-size: 1rem;
+  padding: 14px 16px;
 }
 /* Hero header with blurred cover background */
 .hero {

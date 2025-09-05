@@ -5,12 +5,12 @@
   <h1 class="page-title center">{{ title }}</h1>
 
   <div class="grid detail-grid">
-    <!-- Left: cover + meta + approve -->
+    <!-- Left card -->
     <div class="card fade-in">
       {% if cover_url %}
         <div class="cover fill" style="background-image:url('{{ cover_url }}')"></div>
       {% else %}
-        <div class="card-sub" style="padding:10px 0">No <code>Cover.jpg</code> found</div>
+        <div class="card-sub" style="padding:10px 0">No <code>Cover.jpg</code></div>
       {% endif %}
 
       <div class="space"></div>
@@ -40,13 +40,13 @@
       {% endif %}
     </div>
 
-    <!-- Right: synopsis + chapters -->
+    <!-- Right card -->
     <div class="card fade-in">
       {% if synopsis %}
         <div class="card-header">
-          <div class="card-title">Synopsis</div>
+          <div class="card-title center">Synopsis</div>
         </div>
-        <p class="card-sub">{{ synopsis }}</p>
+        <p class="synopsis center">{{ synopsis }}</p>
         <div class="space"></div>
       {% endif %}
 
@@ -59,9 +59,6 @@
 
       {% if chapters and chapters|length > 0 %}
         <table class="table">
-          <thead>
-            <tr><th>Chapter</th></tr>
-          </thead>
           <tbody>
             {% for ch in chapters %}
               <tr class="chapter-row" onclick="window.location='{{ url_for('reader', folder=folder, chapter=ch) }}'">
@@ -71,9 +68,7 @@
           </tbody>
         </table>
       {% else %}
-        <div class="alert warn">
-          No chapter folders found. Use names like <code>ch.000</code> or <code>chapter 1</code>.
-        </div>
+        <div class="alert warn">No chapter folders found.</div>
       {% endif %}
     </div>
   </div>
