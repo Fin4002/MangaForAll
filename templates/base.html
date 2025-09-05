@@ -16,6 +16,7 @@
       </a>
       <div class="nav-gap"></div>
       <div class="desktop-only">
+        <a href="{{ url_for('manga_list') if url_for else 'manga.html' }}">Manga</a>
         <a href="{{ url_for('forum') if url_for else 'forum.html' }}">Forum</a>
         {% if user and is_content_manager(user) %}
           <a href="{{ url_for('content_dashboard') if url_for else 'dash_content.html' }}">Content</a>
@@ -35,6 +36,7 @@
   <!-- Mobile menu -->
   <div class="container hidden mobile-only card" data-menu-target style="margin-top:10px">
     <div class="row" style="flex-direction:column; align-items:stretch">
+      <a href="{{ url_for('manga_list') if url_for else 'manga.html' }}">Manga</a>
       <a href="{{ url_for('forum') if url_for else 'forum.html' }}">Forum</a>
       {% if user and is_content_manager(user) %}
         <a href="{{ url_for('content_dashboard') if url_for else 'dash_content.html' }}">Content</a>
