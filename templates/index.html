@@ -1,16 +1,31 @@
 {% extends 'base.html' %}
-{% block title %}Home · MangaForAll{% endblock %}
+{% block title %}Home · MintForum{% endblock %}
 {% block content %}
-  <h1>Latest Manga</h1>
-  <div class="grid">
-    {% for m in mangas %}
-      <a class="card" href="{{ url_for('manga_detail', manga_id=m.id) }}">
-        <div class="cover" style="background-image:url('{{ m.cover_url or url_for('static', filename='placeholder.jpg') }}')"></div>
-        <h3>{{ m.title }}</h3>
-        <p>{{ m.author or 'Unknown' }}</p>
-      </a>
-    {% else %}
-      <p>No manga yet. Admin can seed some from /dashboard/admin.</p>
-    {% endfor %}
-  </div>
+  <h1 class="page-title">Latest Manga</h1>
+
+  {% if mangas %}
+    <div class="grid grid-3">
+      {% for m in mangas %}
+        <a class="card card-link fade-in" href="{{ url_for('manga_detail', manga_id=m.manga_id) if url_for else '#' }}" aria-label="{{ m.Title }}">
+          {% if m.CoverPath %}
+            <div class="cover" style="background-image:url('{{ url_for('static', filename=m.CoverPath) }}')"></div>
+          {% else %}
+            <div class="cover" style="background-image:url('{{ url_for('static', filename='placeholder.jpg') }}')"></div>
+          {% endif %}
+          <div class="card-body">
+            <h3 class="card-title">{{ m.Title }}</h3>
+            <p class="card-meta">{{ m.Author_name or 'Unknown' }}</p>
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Nothing here yet</div>
+      </div>
+      <p class="card-sub">Approve some content from the dashboard to populate the homepage.</p>
+      <a class="btn" href="{{ url_for('content_dashboard') if url_for else '#' }}">Go to Content</a>
+    </div>
+  {% endif %}
 {% endblock %}

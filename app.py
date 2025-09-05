@@ -1,5 +1,5 @@
-# app.py — Flask + mysql-connector-python, built for YOUR schema
-# Schema used (from your diagram):
+# app.py — Flask + mysql-connector-python, built to match your schema
+# Schema used (from your diagram / dump):
 #   users(user_id, username, joining_date, no_of_chapters_read, email)
 #   user_auth(user_id, password_hash, admin_id)
 #   admin(admin_id, name)
@@ -9,7 +9,7 @@ import os, re, json, urllib.parse
 from datetime import datetime
 from functools import wraps
 from flask import (
-    Flask, render_template, redirect, url_for,
+    Flask, render_template, render_template_string, redirect, url_for,
     request, flash, session, abort
 )
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -88,6 +88,15 @@ def is_admin(user_row):
     # In your schema, user_auth.admin_id indicates admin linkage
     return bool(user_row and user_row.get('admin_id'))
 
+def is_content_manager(user_row):
+    """
+    True only if the user's admin_id is present in Content_manager.
+    """
+    if not user_row or not user_row.get('admin_id'):
+        return False
+    row = query_one("SELECT 1 FROM Content_manager WHERE admin_id=%s", (user_row['admin_id'],))
+    return bool(row)
+
 def login_required(fn):
     @wraps(fn)
     def wrapper(*a, **k):
@@ -106,6 +115,24 @@ def admin_required(fn):
         return fn(*a, **k)
     return wrapper
 
+def content_manager_required(fn):
+    @wraps(fn)
+    def wrapper(*a, **k):
+        u = current_user()
+        if not u:
+            flash('Login required', 'warning')
+            return redirect(url_for('login', next=request.path))
+        if not is_content_manager(u):
+            abort(403)
+        return fn(*a, **k)
+    return wrapper
+
+@app.context_processor
+def inject_user():
+    return dict(user=current_user())
+@app.context_processor
+def inject_helpers():
+    return dict(is_admin=is_admin, is_content_manager=is_content_manager)
 # ---------------------------
 # Auth routes (users + user_auth)
 # ---------------------------
@@ -170,17 +197,24 @@ def logout():
     return redirect(url_for('index'))
 
 # ---------------------------
-# Pages
+# Pages (public site)
 # --------------------------- 
 @app.route('/')
 def index():
-    # show latest or alphabetic manga
-    mangas = query_all(f"SELECT manga_id, Title, Author_name, synopsis, publication_status FROM manga ORDER BY Title ASC")
+    mangas = query_all("""
+        SELECT manga_id, Title, Author_name, synopsis, publication_status, CoverPath
+        FROM manga
+        ORDER BY manga_id DESC
+    """)
     return render_template('index.html', mangas=mangas, user=current_user())
 
 @app.route('/manga')
 def manga_list():
-    mangas = query_all("SELECT manga_id, Title, Author_name, synopsis, publication_status FROM manga ORDER BY Title ASC")
+    mangas = query_all("""
+        SELECT manga_id, Title, Author_name, synopsis, publication_status, CoverPath
+        FROM manga
+        ORDER BY Title ASC
+    """)
     return render_template('manga.html', mangas=mangas, user=current_user())
 
 @app.route('/manga/<int:manga_id>')
@@ -188,7 +222,6 @@ def manga_detail(manga_id):
     m = query_one("SELECT * FROM manga WHERE manga_id=%s", (manga_id,))
     if not m:
         abort(404)
-    # If you later add chapters/pages tables, you’d query them here.
     return render_template('manga_detail.html', manga=m, chapters=[], user=current_user())
 
 @app.route('/dashboard/admin')
@@ -207,27 +240,306 @@ def forum():
     return render_template('forum.html', user=current_user())
 
 # ---------------------------
-# Resources → DB sync (creates manga rows only, per your schema)
-# Directory layout:
-#   static/Resources/<MangaTitle>/
-# We set: Title=<folder>, Author_name='Unknown', synopsis='Imported...', publication_status='ongoing'
-# user_id = current user's id if logged in, else NULL
-# admin_id = current admin_id if logged in as admin, else NULL
+# Resources scanning helpers
 # ---------------------------
 IMAGE_EXTS = ('.jpg', '.jpeg', '.png', '.webp', '.gif')
 
+def natural_sort_keys(s):
+    # e.g., "ch.2" before "ch.10"
+    return [int(t) if t.isdigit() else t.lower() for t in re.findall(r'\d+|\D+', s)]
+
+def parse_manga_txt(txt_path):
+    """
+    Expected format (single line, comma-separated):
+      Author_name, publication_status, title
+    Example:
+      Eiichiro Oda, ongoing, One Piece
+    """
+    meta = {"Author_name": "Unknown", "publication_status": "unknown", "Title": None}
+    try:
+        with open(txt_path, "r", encoding="utf-8") as f:
+            line = f.readline().strip()
+        if "," in line:
+            parts = [p.strip() for p in line.split(",")]
+        else:
+            parts = [p.strip() for p in line.splitlines()]
+        while len(parts) < 3:
+            parts.append("")
+        meta["Author_name"], meta["publication_status"], meta["Title"] = parts[:3]
+    except FileNotFoundError:
+        pass
+    return meta
+
+def read_synopsis(syn_path):
+    try:
+        with open(syn_path, "r", encoding="utf-8") as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        return ""
+# Accept "ch.001", "ch1", "chapter 1", "Chapter-12", etc.
+def is_chapter_folder(name: str) -> bool:
+    lname = name.lower()
+    return lname.startswith("ch") or lname.startswith("chapter")
+
+def chapter_sort_key(name: str):
+    # Use the first number for ordering; fallback to casefold
+    m = re.search(r'\d+', name)
+    return int(m.group()) if m else name.casefold()
+
+def scan_resources_content():
+    """
+    Walk static/Resources and return a list of manga dicts:
+      {
+        "Title": ...,
+        "Author_name": ...,
+        "publication_status": ...,
+        "synopsis": ...,
+        "cover_url": "/static/Resources/<folder>/Cover.jpg" if exists else None,
+        "folder": "<folder name>",
+        "chapters": ["ch.000", "ch.001", ...]  # sorted
+      }
+    """
+    base = resources_root()
+    items = []
+    if not os.path.isdir(base):
+        return items
+
+    for folder in sorted(
+        [d for d in os.listdir(base) if os.path.isdir(os.path.join(base, d))],
+        key=lambda s: s.lower()
+    ):
+        fpath = os.path.join(base, folder)
+        meta = parse_manga_txt(os.path.join(fpath, "manga.txt"))
+        title = meta.get("Title") or folder
+
+        synopsis = read_synopsis(os.path.join(fpath, "synopsis.txt"))
+        cover_fs = os.path.join(fpath, "Cover.jpg")
+        cover_url = f"/static/Resources/{folder}/Cover.jpg" if os.path.isfile(cover_fs) else None
+
+        # AFTER
+        ch_dirs = [
+                d for d in os.listdir(fpath)
+                if os.path.isdir(os.path.join(fpath, d)) and is_chapter_folder(d)
+        ]
+        ch_dirs.sort(key=chapter_sort_key)
+
+
+        items.append({
+            "Title": title,
+            "Author_name": meta.get("Author_name") or "Unknown",
+            "publication_status": meta.get("publication_status") or "unknown",
+            "synopsis": synopsis,
+            "cover_url": cover_url,
+            "folder": folder,
+            "chapters": ch_dirs
+        })
+
+    items.sort(key=lambda x: (x["Title"] or "").lower())
+    return items
+
+# ---------------------------
+# Content dashboard
+# ---------------------------
+@app.route('/dashboard/content')
+@content_manager_required
+def content_dashboard():
+    u = current_user()
+    mangas = scan_resources_content()
+    # NOTE: to make cards clickable, ensure your dash_content.html wraps each card
+    # with: <a href="{{ url_for('content_detail', folder=m.folder) }}">...</a>
+    return render_template('dash_content.html', mangas=mangas, user=u)
+
+# Per-manga detail: list chapters, metadata, approve button
+@app.route('/dashboard/content/<folder>')
+@content_manager_required
+def content_detail(folder):
+    u = current_user()
+    base = resources_root()
+    fpath = os.path.join(base, folder)
+    if not os.path.isdir(fpath):
+        flash("Folder not found.", "danger")
+        return redirect(url_for('content_dashboard'))
+
+    meta = parse_manga_txt(os.path.join(fpath, "manga.txt"))
+    title = meta.get("Title") or folder
+    synopsis = read_synopsis(os.path.join(fpath, "synopsis.txt"))
+    cover_fs = os.path.join(fpath, "Cover.jpg")
+    cover_url = f"/static/Resources/{folder}/Cover.jpg" if os.path.isfile(cover_fs) else None
+
+    # AFTER
+    chapters = [
+            d for d in os.listdir(fpath)
+            if os.path.isdir(os.path.join(fpath, d)) and is_chapter_folder(d)
+        ]
+    chapters.sort(key=chapter_sort_key)
+
+
+    existing = query_one("SELECT manga_id FROM manga WHERE Title=%s", (title,))
+    approved = bool(existing)
+
+    return render_template(
+        "content_detail.html",  # create this template or swap to render_template_string
+        user=u,
+        folder=folder,
+        meta=meta,
+        title=title,
+        synopsis=synopsis,
+        cover_url=cover_url,
+        chapters=chapters,
+        approved=approved
+    )
+
+# Approve handler: insert metadata into DB only when approved
+@app.route('/dashboard/content/<folder>/approve', methods=['POST', 'GET'])
+@content_manager_required
+def content_approve(folder):
+    u = current_user()
+    base = resources_root()
+    fpath = os.path.join(base, folder)
+    if not os.path.isdir(fpath):
+        flash("Folder not found in static/Resources.", "danger")
+        return redirect(url_for('content_detail', folder=folder))
+
+    meta = parse_manga_txt(os.path.join(fpath, "manga.txt"))
+    title = (meta.get("Title") or folder).strip()
+    synopsis = read_synopsis(os.path.join(fpath, "synopsis.txt"))
+
+    # cover path (relative to /static)
+    cover_rel = None
+    cover_fs = os.path.join(fpath, "Cover.jpg")
+    if os.path.isfile(cover_fs):
+        cover_rel = f"Resources/{folder}/Cover.jpg"
+
+    # no dupes by Title
+    exists = query_one("SELECT manga_id, CoverPath FROM manga WHERE Title=%s", (title,))
+    if exists:
+        # if already approved but missing cover, quietly backfill it
+        if cover_rel and not exists.get("CoverPath"):
+            try:
+                execute("UPDATE manga SET CoverPath=%s WHERE manga_id=%s", (cover_rel, exists["manga_id"]))
+                flash("Already approved. CoverPath was missing and is now set.", "info")
+            except Exception as e:
+                flash(f"Already approved; failed to set CoverPath: {e}", "warning")
+        else:
+            flash("Already approved.", "info")
+        return redirect(url_for('content_detail', folder=folder))
+
+    # build insert columns/values (only include what we actually have)
+    cols = ["publication_status", "Title", "Author_name", "synopsis"]
+    vals = [
+        meta.get("publication_status") or "unknown",
+        title,
+        meta.get("Author_name") or "Unknown",
+        synopsis
+    ]
+
+    if cover_rel:
+        cols.append("CoverPath")
+        vals.append(cover_rel)
+
+    if u and u.get("user_id") is not None:
+        cols.append("user_id")
+        vals.append(u["user_id"])
+
+    if u and is_admin(u) and u.get("admin_id") is not None:
+        cols.append("admin_id")
+        vals.append(u["admin_id"])
+
+    placeholders = ",".join(["%s"] * len(vals))
+    sql = f"INSERT INTO manga ({','.join(cols)}) VALUES ({placeholders})"
+
+    try:
+        execute(sql, tuple(vals))
+        flash("Manga approved and stored in database (with cover).", "success")
+    except Exception as e:
+        flash(f"DB insert failed: {e}", "danger")
+
+    return redirect(url_for('content_detail', folder=folder))
+
+
+
+# ---------------------------
+# Reader
+# ---------------------------
+def list_images(folder_path):
+    imgs = []
+    try:
+        for name in os.listdir(folder_path):
+            ext = os.path.splitext(name)[1].lower()
+            if ext in IMAGE_EXTS:
+                imgs.append(name)
+    except FileNotFoundError:
+        return []
+    # Natural-sort page filenames like 001.jpg, 2.png, 10.png
+    def keyfn(s):
+        return [int(t) if t.isdigit() else t.lower() for t in re.findall(r'\d+|\D+', s)]
+    imgs.sort(key=keyfn)
+    return imgs
+
+@app.route('/reader/<folder>/<chapter>')
+def reader(folder, chapter):
+    """
+    Render pages for a chapter located at:
+      static/Resources/<folder>/<chapter>/
+    """
+    base = resources_root()
+    chapter_dir = os.path.join(base, folder, chapter)
+    if not os.path.isdir(chapter_dir):
+        abort(404)
+
+    # Build image URLs
+    files = list_images(chapter_dir)
+    pages = [f"/static/Resources/{folder}/{chapter}/{fn}" for fn in files]
+
+    # nav: prev/next chapter by scanning sibling ch.* dirs
+    manga_dir = os.path.join(base, folder)
+    # AFTER
+    siblings = [
+            d for d in os.listdir(manga_dir)
+            if os.path.isdir(os.path.join(manga_dir, d)) and is_chapter_folder(d)
+        ]
+    siblings.sort(key=chapter_sort_key)
+
+    try:
+        idx = siblings.index(chapter)
+    except ValueError:
+        idx = -1
+    prev_ch = siblings[idx - 1] if idx > 0 else None
+    next_ch = siblings[idx + 1] if 0 <= idx < len(siblings) - 1 else None
+
+    # light metadata (optional)
+    meta = parse_manga_txt(os.path.join(manga_dir, "manga.txt"))
+    title = meta.get("Title") or folder
+
+    _num = re.search(r'\d+', chapter)
+    chapter_ctx = {
+        "number": _num.group() if _num else chapter,
+        "title": f"{title} · {chapter}"
+    }
+
+
+    return render_template(
+        "reader.html",
+        folder=folder,
+        chapter=chapter_ctx,
+        pages=pages,
+        prev_chapter=prev_ch,
+        next_chapter=next_ch
+    )
+
+# ---------------------------
+# Resources → DB sync (manual)
+# ---------------------------
 def list_dir_sorted(path):
     try:
         items = os.listdir(path)
     except FileNotFoundError:
         return []
-    # natural sort
     def keyfn(s):
         return [int(t) if t.isdigit() else t.lower() for t in re.findall(r'\d+|\D+', s)]
     return sorted(items, key=keyfn)
 
 def ensure_manga_row(title_str, user_row):
-    # Does a manga row with this Title exist?
     existing = query_one("SELECT manga_id FROM manga WHERE Title=%s", (title_str,))
     if existing:
         return existing['manga_id'], False
@@ -266,100 +578,7 @@ def sync_from_resources_http():
 
     flash(f'Scanned {scanned} folders. Created {created} manga rows.', 'success')
     return redirect(url_for('content_dashboard') if is_admin(user) else url_for('index'))
-def natural_sort_keys(s):
-    # "ch.2" before "ch.10"
-    return [int(t) if t.isdigit() else t.lower() for t in re.findall(r'\d+|\D+', s)]
 
-def parse_manga_txt(txt_path):
-    """
-    Expected format (single line, comma-separated):
-      Author_name, publication_status, title
-    Example:
-      Eiichiro Oda, ongoing, One Piece
-    """
-    meta = {"Author_name": "Unknown", "publication_status": "unknown", "Title": None}
-    try:
-        with open(txt_path, "r", encoding="utf-8") as f:
-            line = f.readline().strip()
-        # allow either comma-separated or newline-separated just in case
-        if "," in line:
-            parts = [p.strip() for p in line.split(",")]
-        else:
-            parts = [p.strip() for p in line.splitlines()]
-        # pad to length 3
-        while len(parts) < 3:
-            parts.append("")
-        meta["Author_name"], meta["publication_status"], meta["Title"] = parts[:3]
-    except FileNotFoundError:
-        pass
-    return meta
-
-def read_synopsis(syn_path):
-    try:
-        with open(syn_path, "r", encoding="utf-8") as f:
-            return f.read().strip()
-    except FileNotFoundError:
-        return ""
-
-def scan_resources_content():
-    """
-    Walk static/Resources and return a list of manga dicts:
-      {
-        "Title": ...,
-        "Author_name": ...,
-        "publication_status": ...,
-        "synopsis": ...,
-        "cover_url": "/static/Resources/<folder>/cover.jpg" if exists else None,
-        "folder": "<folder name>",
-        "chapters": ["ch.000", "ch.001", ...]  # sorted naturally
-      }
-    Sorted by Title (case-insensitive). If Title is missing in manga.txt, fallback to folder name.
-    """
-    base = resources_root()
-    items = []
-    if not os.path.isdir(base):
-        return items
-
-    for folder in sorted(
-        [d for d in os.listdir(base) if os.path.isdir(os.path.join(base, d))],
-        key=lambda s: s.lower()
-    ):
-        fpath = os.path.join(base, folder)
-        meta = parse_manga_txt(os.path.join(fpath, "manga.txt"))
-        title = meta.get("Title") or folder
-
-        synopsis = read_synopsis(os.path.join(fpath, "synopsis.txt"))
-        cover_fs = os.path.join(fpath, "cover.jpg")
-        cover_url = f"/static/Resources/{folder}/cover.jpg" if os.path.isfile(cover_fs) else None
-
-        # chapters = subfolders starting with "ch."
-        ch_dirs = [
-            d for d in os.listdir(fpath)
-            if os.path.isdir(os.path.join(fpath, d)) and d.lower().startswith("ch.")
-        ]
-        ch_dirs.sort(key=natural_sort_keys)
-
-        items.append({
-            "Title": title,
-            "Author_name": meta.get("Author_name") or "Unknown",
-            "publication_status": meta.get("publication_status") or "unknown",
-            "synopsis": synopsis,
-            "cover_url": cover_url,
-            "folder": folder,
-            "chapters": ch_dirs
-        })
-
-    # final sort by Title in case manga.txt changed it from the folder name
-    items.sort(key=lambda x: (x["Title"] or "").lower())
-    return items
-
-# Optional: simple content dashboard for non-ORM world
-@app.route('/dashboard/content')
-@login_required
-def content_dashboard():
-    u = current_user()
-    mangas = scan_resources_content()
-    return render_template('dash_content.html', mangas=mangas, user=u)
 # ---------------------------
 # Entrypoint
 # ---------------------------

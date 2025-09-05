@@ -1,10 +1,33 @@
 {% extends 'base.html' %}
 {% block title %}My Profile{% endblock %}
 {% block content %}
-  <h1>Profile</h1>
-  <ul>
-    <li>Username: {{ user.username }}</li>
-    <li>Email: {{ user.email }}</li>
-    <li>Role: {{ user.role }}</li>
-  </ul>
+  <div class="grid grid-2">
+    <div class="card fade-in">
+      <div class="row" style="gap:16px">
+        <div class="avatar"></div>
+        <div>
+          <div class="card-title" style="margin:0">{{ user.username }}</div>
+          <p class="card-sub">{{ user.email }}</p>
+          <span class="badge ok">Member</span>
+        </div>
+      </div>
+      <div class="space"></div>
+      <form class="form">
+        <label class="label">Display name</label>
+        <input class="input" value="{{ user.username }}">
+        <label class="label">Email</label>
+        <input class="input" type="email" value="{{ user.email }}">
+        <button class="btn" type="button">Save changes</button>
+      </form>
+    </div>
+
+    <div class="card fade-in">
+      <div class="card-header">
+        <div class="card-title">Account</div>
+      </div>
+      <p class="card-sub">Joined: {{ user.joining_date }}</p>
+      <p class="card-sub">Chapters read: {{ user.no_of_chapters_read or 0 }}</p>
+      <a class="btn outline" href="{{ url_for('logout') if url_for else '#' }}">Logout</a>
+    </div>
+  </div>
 {% endblock %}

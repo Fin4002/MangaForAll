@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
-{% block title %}Browse Manga · MangaForAll{% endblock %}
+{% block title %}Home · MangaForAll{% endblock %}
 {% block content %}
-  <h1 class="page-title">Browse Manga</h1>
+  <h1 class="page-title">Latest Manga</h1>
 
   {% if mangas %}
     <div class="grid grid-cards">
@@ -18,6 +18,6 @@
       {% endfor %}
     </div>
   {% else %}
-    <p>Empty. Approve something first.</p>
+    <p>No manga yet. Approve some in Content.</p>
   {% endif %}
 {% endblock %}

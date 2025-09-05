@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% block title %}Content · {{ title }}{% endblock %}
+
+{% block content %}
+  <h1 class="page-title center">{{ title }}</h1>
+
+  <div class="grid detail-grid">
+    <!-- Left: cover + meta + approve -->
+    <div class="card fade-in">
+      {% if cover_url %}
+        <div class="cover fill" style="background-image:url('{{ cover_url }}')"></div>
+      {% else %}
+        <div class="card-sub" style="padding:10px 0">No <code>Cover.jpg</code> found</div>
+      {% endif %}
+
+      <div class="space"></div>
+      <div class="row" style="justify-content:space-between">
+        <span class="card-sub">Author</span>
+        <strong>{{ meta.Author_name or 'Unknown' }}</strong>
+      </div>
+      <div class="row" style="justify-content:space-between">
+        <span class="card-sub">Status</span>
+        {% set st = (meta.publication_status or 'unknown')|lower %}
+        {% if st in ['ongoing','active','published'] %}
+          <span class="badge ok">{{ meta.publication_status }}</span>
+        {% elif st in ['hiatus','paused'] %}
+          <span class="badge warn">{{ meta.publication_status }}</span>
+        {% else %}
+          <span class="badge danger">{{ meta.publication_status }}</span>
+        {% endif %}
+      </div>
+
+      <div class="space"></div>
+      {% if approved %}
+        <span class="btn outline">Already approved</span>
+      {% else %}
+        <form method="post" action="{{ url_for('content_approve', folder=folder) }}">
+          <button type="submit" class="btn">Approve & Save to DB</button>
+        </form>
+      {% endif %}
+    </div>
+
+    <!-- Right: synopsis + chapters -->
+    <div class="card fade-in">
+      {% if synopsis %}
+        <div class="card-header">
+          <div class="card-title">Synopsis</div>
+        </div>
+        <p class="card-sub">{{ synopsis }}</p>
+        <div class="space"></div>
+      {% endif %}
+
+      <div class="card-header">
+        <div class="card-title">Chapters</div>
+        {% if chapters %}
+          <span class="badge ok">{{ chapters|length }} found</span>
+        {% endif %}
+      </div>
+
+      {% if chapters and chapters|length > 0 %}
+        <table class="table">
+          <thead>
+            <tr><th>Chapter</th></tr>
+          </thead>
+          <tbody>
+            {% for ch in chapters %}
+              <tr class="chapter-row" onclick="window.location='{{ url_for('reader', folder=folder, chapter=ch) }}'">
+                <td>{{ ch }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="alert warn">
+          No chapter folders found. Use names like <code>ch.000</code> or <code>chapter 1</code>.
+        </div>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

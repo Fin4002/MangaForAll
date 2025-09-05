@@ -1,20 +1,26 @@
 {% extends 'base.html' %}
 {% block title %}Content Manager{% endblock %}
 {% block content %}
-  <h1>Content Manager</h1>
+  <h1 class="page-title center">Currently Available Manga</h1>
+
   {% if mangas %}
-    <div class="grid">
+    <div class="grid grid-cards">
       {% for m in mangas %}
-        <div class="card">
-          {% if m.cover_url %}<img src="{{ m.cover_url }}" alt="{{ m.Title }}" style="max-width:200px">{% endif %}
-          <h3>{{ m.Title }}</h3>
-          <p><strong>Author:</strong> {{ m.Author_name }}</p>
-          <p><strong>Status:</strong> {{ m.publication_status }}</p>
-        </div>
+        {% set cover = m.cover_url or url_for('static', filename='Resources/' ~ m.folder ~ '/Cover.jpg') %}
+
+        <a class="card-link" href="{{ url_for('content_detail', folder=m.folder) }}">
+          <div class="card">
+            <div class="cover" {% if cover %}style="background-image:url('{{ cover }}')" {% endif %}></div>
+            <div class="card-body">
+              <h3 class="card-title">{{ m.Title }}</h3>
+              <p class="card-meta">Status: {{ m.publication_status }}</p>
+              <p class="card-meta">Chapters: {{ m.chapters|length }}</p>
+            </div>
+          </div>
+        </a>
       {% endfor %}
     </div>
   {% else %}
-    <p>No manga found in static/Resources.</p>
+    <p>No manga found in <code>static/Resources</code>.</p>
   {% endif %}
 {% endblock %}
-

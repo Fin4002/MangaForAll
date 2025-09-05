@@ -1,6 +1,31 @@
 {% extends 'base.html' %}
 {% block title %}Moderator Dashboard{% endblock %}
 {% block content %}
-  <h1>Moderator Dashboard</h1>
-  <p>Tools for moderating forum coming soon.</p>
+  <div class="grid grid-2">
+    <div class="card fade-in">
+      <div class="card-header">
+        <div class="card-title">Moderation Queue</div>
+      </div>
+      <p class="card-sub">Incoming reports show up here.</p>
+      <table class="table">
+        <thead><tr><th>Post</th><th>Reason</th><th>Action</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>“First post!” spam</td><td>Spam</td>
+            <td><button class="btn">Resolve</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card fade-in">
+      <div class="card-header">
+        <div class="card-title">Tools</div>
+      </div>
+      <div class="row">
+        <button class="btn outline">Mute User</button>
+        <button class="btn outline">Lock Thread</button>
+      </div>
+    </div>
+  </div>
 {% endblock %}
