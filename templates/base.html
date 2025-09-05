@@ -2,47 +2,6 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-<<<<<<< HEAD
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}MangaForAll{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-<header class="site-header">
-  <nav class="nav">
-    <a href="{{ url_for('index') }}">Home</a>
-    <a href="{{ url_for('manga_list') }}">Manga</a>
-    <a href="{{ url_for('forum_main') }}">Forum</a>
-    {% if user %}
-      <a href="{{ url_for('profile') }}">Profile</a>
-      {% if user.admin_id %}
-        <a href="{{ url_for('admin_dashboard') }}">Dashboard</a>
-        <a href="{{ url_for('content_dashboard') }}">Content</a>
-      {% endif %}
-      <a href="{{ url_for('logout') }}">Logout</a>
-    {% else %}
-      <a href="{{ url_for('login') }}">Login</a>
-      <a href="{{ url_for('register') }}">Register</a>
-    {% endif %}
-  </nav>
-</header>
-
-  <main class="container">
-    {% with msgs = get_flashed_messages(with_categories=True) %}
-      {% if msgs %}
-        <div class="flash-wrap">
-          {% for cat, msg in msgs %}
-            <div class="flash {{ cat }}">{{ msg }}</div>
-          {% endfor %}
-        </div>
-      {% endif %}
-    {% endwith %}
-    {% block content %}{% endblock %}
-  </main>
-  <footer class="site-footer">
-    <p>&copy; {{ 2025 }} MangaForAll</p>
-  </footer>
-=======
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>{% block title %}MangaForAll{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') if url_for else 'style.css' }}">
@@ -106,6 +65,13 @@
   </div>
 
   <footer class="footer">© 2025 MangaForAll. Try not to break it.</footer>
->>>>>>> bded1d1ed0a86288146d4d00cc99e8dc3f5adaf6
+  <div id="modal-root" class="modal-root hidden" aria-hidden="true">
+  <div class="modal-backdrop" data-close></div>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <button class="modal-close" data-close aria-label="Close">×</button>
+    <div id="modal-content"></div>
+  </div>
+</div>
+
 </body>
 </html>

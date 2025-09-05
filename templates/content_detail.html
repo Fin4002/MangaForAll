@@ -2,31 +2,15 @@
 {% block title %}Content · {{ title }}{% endblock %}
 
 {% block content %}
-<<<<<<< HEAD
-  <h1 class="page-title">{{ title }}</h1>
-
-  <div class="grid" style="grid-template-columns: 260px 1fr;">
-    <div class="card">
-      {% if cover_url %}
-        <img src="{{ cover_url }}" alt="{{ title }}">
-      {% else %}
-        <div class="dim">No cover.jpg found</div>
-      {% endif %}
-      <p><strong>Author:</strong> {{ meta.Author_name or 'Unknown' }}</p>
-      <p><strong>Status:</strong> {{ meta.publication_status or 'unknown' }}</p>
-
-      {% if approved %}
-        <span class="btn secondary">Already approved</span>
-=======
   <h1 class="page-title center">{{ title }}</h1>
 
   <div class="grid detail-grid">
-    <!-- Left card -->
+    <!-- Left: cover + meta + approve -->
     <div class="card fade-in">
       {% if cover_url %}
         <div class="cover fill" style="background-image:url('{{ cover_url }}')"></div>
       {% else %}
-        <div class="card-sub" style="padding:10px 0">No <code>Cover.jpg</code></div>
+        <div class="card-sub" style="padding:10px 0">No <code>Cover.jpg</code> found</div>
       {% endif %}
 
       <div class="space"></div>
@@ -49,7 +33,6 @@
       <div class="space"></div>
       {% if approved %}
         <span class="btn outline">Already approved</span>
->>>>>>> bded1d1ed0a86288146d4d00cc99e8dc3f5adaf6
       {% else %}
         <form method="post" action="{{ url_for('content_approve', folder=folder) }}">
           <button type="submit" class="btn">Approve & Save to DB</button>
@@ -57,34 +40,13 @@
       {% endif %}
     </div>
 
-<<<<<<< HEAD
-    <div class="card" style="text-align:left; align-items:stretch;">
-      {% if synopsis %}
-        <h3>Synopsis</h3>
-        <p>{{ synopsis }}</p>
-        <hr style="border-color:#30363d; margin:16px 0;">
-      {% endif %}
-
-      <h3>Chapters</h3>
-      {% if chapters and chapters|length > 0 %}
-        <ul style="list-style:none; padding:0; margin:0;">
-          {% for ch in chapters %}
-            <li style="margin:6px 0; display:flex; justify-content:space-between; align-items:center;">
-              <span>{{ ch }}</span>
-              <a class="btn ghost" href="{{ url_for('reader', folder=folder, chapter=ch) }}">Open</a>
-            </li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        <p class="dim">No chapter folders found. Use names like <code>ch.000</code> or <code>chapter 1</code>.</p>
-=======
-    <!-- Right card -->
+    <!-- Right: synopsis + chapters -->
     <div class="card fade-in">
       {% if synopsis %}
         <div class="card-header">
-          <div class="card-title center">Synopsis</div>
+          <div class="card-title">Synopsis</div>
         </div>
-        <p class="synopsis center">{{ synopsis }}</p>
+        <p class="card-sub">{{ synopsis }}</p>
         <div class="space"></div>
       {% endif %}
 
@@ -97,6 +59,9 @@
 
       {% if chapters and chapters|length > 0 %}
         <table class="table">
+          <thead>
+            <tr><th>Chapter</th></tr>
+          </thead>
           <tbody>
             {% for ch in chapters %}
               <tr class="chapter-row" onclick="window.location='{{ url_for('reader', folder=folder, chapter=ch) }}'">
@@ -106,8 +71,9 @@
           </tbody>
         </table>
       {% else %}
-        <div class="alert warn">No chapter folders found.</div>
->>>>>>> bded1d1ed0a86288146d4d00cc99e8dc3f5adaf6
+        <div class="alert warn">
+          No chapter folders found. Use names like <code>ch.000</code> or <code>chapter 1</code>.
+        </div>
       {% endif %}
     </div>
   </div>

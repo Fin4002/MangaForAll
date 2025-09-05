@@ -1,40 +1,45 @@
-{% extends "base.html" %}
-{% block title %}{{ post.title }} · MangaForAll{% endblock %}
-{% block content %}
+@app.route("/forum/<int:post_id>", methods=["GET", "POST"])
+def post_detail(post_id):
+    post = query_one("SELECT * FROM forum_posts WHERE post_id=%s", (post_id,))
+    if not post:
+        abort(404)
 
-<h1 class="page-title">{{ post.title }}</h1>
+    # helper to render either full page or modal partial
+    def render_partial_or_full():
+        is_partial = request.args.get("partial") or request.headers.get("X-Requested-With") == "fetch"
+        template = "post_detail_modal.html" if is_partial else "post_detail.html"
+        comments = query_all(
+            """
+            SELECT fc.comment_id, fc.content, fc.post_id, u.username
+            FROM forum_comments fc
+            LEFT JOIN users u ON u.user_id = fc.user_id
+            WHERE fc.post_id = %s
+            ORDER BY fc.comment_id ASC
+            """,
+            (post_id,)
+        )
+        return render_template(template, post=post, comments=comments, user=current_user())
 
-<div class="card mb-6">
-  {% if post.image %}
-    <img src="{{ url_for('post_image_blob', post_id=post.post_id) }}" width="300">
+    if request.method == "POST":
+        u = current_user()
+        if not u:
+            flash("Login required to comment.", "warning")
+            return redirect(url_for("login", next=request.path))
+        content = (request.form.get("content") or "").strip()
+        if not content:
+            if request.args.get("partial"):
+                # return the current partial with a tiny warning if you want
+                return render_partial_or_full()
+            flash("Comment cannot be empty.", "warning")
+            return redirect(url_for("post_detail", post_id=post_id))
 
-  {% endif %}
-  <div class="card-body">
-    <p class="card-text">{{ post.content }}</p>
-    <p class="card-meta">by {{ post.author }}</p>
-  </div>
-</div>
+        execute(
+            "INSERT INTO forum_comments (content, user_id, post_id, admin_id) VALUES (%s, %s, %s, %s)",
+            (content, u["user_id"], post_id, u["admin_id"] if is_admin(u) else None)
+        )
+        if request.args.get("partial") or request.headers.get("X-Requested-With") == "fetch":
+            # return the updated partial for the modal
+            return render_partial_or_full()
+        return redirect(url_for("post_detail", post_id=post_id))
 
-<hr>
-<h3>Comments</h3>
-<ul class="space-y-2">
-  {% if comments and comments|length > 0 %}
-    {% for c in comments %}
-      <li class="card"><div class="card-body"><b>{{ c.username or 'Anonymous' }}</b>: {{ c.content }}</div></li>
-    {% endfor %}
-  {% else %}
-    <li>No comments yet.</li>
-  {% endif %}
-</ul>
-
-{% if user %}
-  <form method="POST" class="mt-4">
-    <textarea name="content" class="input" required></textarea><br>
-    <button type="submit" class="btn">Add Comment</button>
-  </form>
-{% else %}
-  <p class="mt-4"><a href="{{ url_for('login') }}">Login</a> to comment.</p>
-{% endif %}
-
-{% endblock %}
-
+    return render_partial_or_full()

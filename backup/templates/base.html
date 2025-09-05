@@ -2,44 +2,68 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>{% block title %}MangaForAll{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') if url_for else 'style.css' }}">
+  <script defer src="{{ url_for('static', filename='ui.js') if url_for else 'ui.js' }}"></script>
 </head>
 <body>
-<header class="site-header">
+  <!-- Top Navbar -->
   <nav class="nav">
-    <a href="{{ url_for('index') }}">Home</a>
-    <a href="{{ url_for('manga_list') }}">Manga</a>
-    <a href="{{ url_for('forum') }}">Forum</a>
-    {% if user %}
-      <a href="{{ url_for('profile') }}">Profile</a>
-      {% if user.admin_id %}
-        <a href="{{ url_for('admin_dashboard') }}">Dashboard</a>
-        <a href="{{ url_for('content_dashboard') }}">Content</a>
-      {% endif %}
-      <a href="{{ url_for('logout') }}">Logout</a>
-    {% else %}
-      <a href="{{ url_for('login') }}">Login</a>
-      <a href="{{ url_for('register') }}">Register</a>
-    {% endif %}
+    <div class="nav-inner">
+      <a class="brand" href="{{ url_for('index') if url_for else 'index.html' }}">
+        <span class="brand-badge">M</span> MangaForAll
+      </a>
+      <div class="nav-gap"></div>
+      <div class="desktop-only">
+        <a href="{{ url_for('manga_list') if url_for else 'manga.html' }}">Manga</a>
+        <a href="{{ url_for('forum') if url_for else 'forum.html' }}">Forum</a>
+        {% if user and is_content_manager(user) %}
+          <a href="{{ url_for('content_dashboard') if url_for else 'dash_content.html' }}">Content</a>
+        {% endif %}
+        {% if session.get('user_id') %}
+          <a href="{{ url_for('profile') if url_for else 'profile.html' }}">Profile</a>
+          <a href="{{ url_for('logout') if url_for else '#' }}" class="btn outline">Logout</a>
+        {% else %}
+          <a href="{{ url_for('login') if url_for else 'login.html' }}" class="btn outline">Login</a>
+          <a href="{{ url_for('register') if url_for else 'register.html' }}" class="btn">Sign up</a>
+        {% endif %}
+      </div>
+      <button class="link mobile-only btn outline" data-menu>Menu</button>
+    </div>
   </nav>
-</header>
 
-  <main class="container">
-    {% with msgs = get_flashed_messages(with_categories=True) %}
-      {% if msgs %}
-        <div class="flash-wrap">
-          {% for cat, msg in msgs %}
-            <div class="flash {{ cat }}">{{ msg }}</div>
-          {% endfor %}
-        </div>
+  <!-- Mobile menu -->
+  <div class="container hidden mobile-only card" data-menu-target style="margin-top:10px">
+    <div class="row" style="flex-direction:column; align-items:stretch">
+      <a href="{{ url_for('manga_list') if url_for else 'manga.html' }}">Manga</a>
+      <a href="{{ url_for('forum') if url_for else 'forum.html' }}">Forum</a>
+      {% if user and is_content_manager(user) %}
+        <a href="{{ url_for('content_dashboard') if url_for else 'dash_content.html' }}">Content</a>
+      {% endif %}
+      {% if session.get('user_id') %}
+        <a href="{{ url_for('profile') if url_for else 'profile.html' }}">Profile</a>
+        <a href="{{ url_for('logout') if url_for else '#' }}">Logout</a>
+      {% else %}
+        <a href="{{ url_for('login') if url_for else 'login.html' }}">Login</a>
+        <a href="{{ url_for('register') if url_for else 'register.html' }}">Sign up</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, msg in messages %}
+          <div class="alert {{ 'ok' if category in ['success','info'] else ('danger' if category in ['danger','error'] else 'warn') }}" data-autoclose="4000">{{ msg }}</div>
+          <div class="space"></div>
+        {% endfor %}
       {% endif %}
     {% endwith %}
+
     {% block content %}{% endblock %}
-  </main>
-  <footer class="site-footer">
-    <p>&copy; {{ 2025 }} MangaForAll</p>
-  </footer>
+  </div>
+
+  <footer class="footer">© 2025 MangaForAll. Try not to break it.</footer>
 </body>
 </html>
