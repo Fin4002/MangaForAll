@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block title %}{{ manga.title }} · MangaForAll{% endblock %}
+{% block content %}
+  <div class="space-between">
+    <h1>{{ manga.title }}</h1>
+    <a class="btn" href="{{ url_for('manga_list') }}">← Back</a>
+  </div>
+  <p class="muted">{{ manga.description }}</p>
+  <hr>
+  <h3>Chapters</h3>
+  <ul class="chapter-list">
+    {% for ch in chapters %}
+      <li>
+        <a href="{{ url_for('reader', chapter_id=ch.id) }}">
+          <span>Chapter {{ ch.number }}{% if ch.title %}: {{ ch.title }}{% endif %}</span>
+          <span class="badge">Read</span>
+        </a>
+      </li>
+    {% else %}
+      <li>No chapters yet.</li>
+    {% endfor %}
+  </ul>
+{% endblock %}
+

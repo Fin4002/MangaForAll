@@ -1,6 +1,36 @@
 {% extends 'base.html' %}
 {% block title %}User Dashboard{% endblock %}
 {% block content %}
+<<<<<<< HEAD
   <h1>User Dashboard</h1>
   <p>Welcome, {{ user.username }}.</p>
+=======
+  <div class="grid grid-3">
+    <div class="card fade-in">
+      <div class="card-header">
+        <div class="card-title">Welcome, {{ user.username }}</div>
+      </div>
+      <p class="card-sub">Here’s your stuff. Try not to lose it.</p>
+      <div class="row">
+        <a class="btn" href="{{ url_for('profile') if url_for else 'profile.html' }}">Edit Profile</a>
+        <a class="btn outline" href="{{ url_for('forum') if url_for else 'forum.html' }}">Go to Forum</a>
+      </div>
+    </div>
+
+    <div class="card fade-in">
+      <div class="card-header">
+        <div class="card-title">Reading Stats</div>
+      </div>
+      <p class="card-sub">Chapters read: {{ user.no_of_chapters_read or 0 }}</p>
+      <span class="badge ok">Active</span>
+    </div>
+
+    <div class="card fade-in">
+      <div class="card-header">
+        <div class="card-title">Notifications</div>
+      </div>
+      <div class="alert warn" data-autoclose="6000">Maintenance tonight. Bring snacks.</div>
+    </div>
+  </div>
+>>>>>>> bded1d1ed0a86288146d4d00cc99e8dc3f5adaf6
 {% endblock %}

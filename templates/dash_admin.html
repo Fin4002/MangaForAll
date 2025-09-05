@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% block title %}Admin Dashboard{% endblock %}
 {% block content %}
+<<<<<<< HEAD
   <h1>Admin Dashboard</h1>
   <h3>Users</h3>
   <table>
@@ -9,4 +10,26 @@
       <tr><td>{{ u.id }}</td><td>{{ u.username }}</td><td>{{ u.email }}</td><td>{{ u.role }}</td></tr>
     {% endfor %}
   </table>
+=======
+  <div class="card fade-in">
+    <div class="card-header">
+      <div class="card-title">Users</div>
+    </div>
+    <table class="table">
+      <thead>
+        <tr><th>ID</th><th>Username</th><th>Email</th><th>Joined</th></tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+          <tr>
+            <td>{{ u.user_id }}</td>
+            <td>{{ u.username }}</td>
+            <td>{{ u.email }}</td>
+            <td>{{ u.joining_date }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+>>>>>>> bded1d1ed0a86288146d4d00cc99e8dc3f5adaf6
 {% endblock %}

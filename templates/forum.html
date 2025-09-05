@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+<<<<<<< HEAD
 {% block title %}Forum · MangaForAll{% endblock %}
 {% block content %}
   <h1 class="page-title">Forum</h1>
@@ -62,3 +63,37 @@
 
 
 
+=======
+{% block title %}Forum{% endblock %}
+{% block content %}
+  <div class="grid grid-2">
+    <div class="card fade-in">
+      <div class="card-header">
+        <div class="card-title">Create Topic</div>
+      </div>
+      <form class="form">
+        <label class="label">Title</label>
+        <input class="input" placeholder="Keep it relevant. Try.">
+        <label class="label">Content</label>
+        <textarea class="input" rows="5" placeholder="Say something useful. Or at least coherent."></textarea>
+        <button class="btn" type="button">Post</button>
+      </form>
+    </div>
+
+    <div class="card fade-in">
+      <div class="card-header">
+        <div class="card-title">Latest Topics</div>
+      </div>
+      <table class="table">
+        <thead>
+          <tr><th>Title</th><th>Author</th><th>Replies</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Welcome to MintForum</td><td>admin</td><td>5</td></tr>
+          <tr><td>Rules & Etiquette</td><td>moderator</td><td>2</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock %}
+>>>>>>> bded1d1ed0a86288146d4d00cc99e8dc3f5adaf6

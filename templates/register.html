@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% block title %}Register{% endblock %}
 {% block content %}
+<<<<<<< HEAD
   <h1>Create Account</h1>
   <form method="post">
     <label>Username <input name="username" required></label>
@@ -8,4 +9,20 @@
     <label>Password <input type="password" name="password" required></label>
     <button type="submit">Register</button>
   </form>
+=======
+  <div class="auth fade-in">
+    <h1>Create account</h1>
+    <p class="card-sub">It’s free. The drama you bring later will cost extra.</p>
+    <form class="form" method="post">
+      <label class="label">Username</label>
+      <input class="input" name="username" required>
+      <label class="label">Email</label>
+      <input class="input" name="email" type="email" required>
+      <label class="label">Password</label>
+      <input class="input" type="password" name="password" required>
+      <button class="btn" type="submit">Sign up</button>
+      <a class="btn ghost" href="{{ url_for('login') if url_for else 'login.html' }}">Already have an account</a>
+    </form>
+  </div>
+>>>>>>> bded1d1ed0a86288146d4d00cc99e8dc3f5adaf6
 {% endblock %}

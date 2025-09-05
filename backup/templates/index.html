@@ -1,9 +1,5 @@
 {% extends 'base.html' %}
-<<<<<<< HEAD
 {% block title %}Home · MangaForAll{% endblock %}
-=======
-{% block title %}Home · MintForum{% endblock %}
->>>>>>> bded1d1ed0a86288146d4d00cc99e8dc3f5adaf6
 {% block content %}
   <h1 class="page-title">Latest Manga</h1>
 
@@ -22,16 +18,6 @@
       {% endfor %}
     </div>
   {% else %}
-<<<<<<< HEAD
     <p>No manga yet. Approve some in Content.</p>
-=======
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">Nothing here yet</div>
-      </div>
-      <p class="card-sub">Approve some content from the dashboard to populate the homepage.</p>
-      <a class="btn" href="{{ url_for('content_dashboard') if url_for else '#' }}">Go to Content</a>
-    </div>
->>>>>>> bded1d1ed0a86288146d4d00cc99e8dc3f5adaf6
   {% endif %}
 {% endblock %}

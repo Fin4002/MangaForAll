@@ -1,10 +1,25 @@
 {% extends 'base.html' %}
 {% block title %}Login{% endblock %}
 {% block content %}
+<<<<<<< HEAD
   <h1>Login</h1>
   <form method="post">
     <label>Username <input name="username" required></label>
     <label>Password <input type="password" name="password" required></label>
     <button type="submit">Login</button>
   </form>
+=======
+  <div class="auth fade-in">
+    <h1>Welcome back</h1>
+    <p class="card-sub">Enter your credentials. Try not to forget them this time.</p>
+    <form class="form" method="post">
+      <label class="label">Username</label>
+      <input class="input" name="username" required>
+      <label class="label">Password</label>
+      <input class="input" type="password" name="password" required>
+      <button class="btn" type="submit">Login</button>
+      <a class="btn ghost" href="{{ url_for('register') if url_for else 'register.html' }}">Create account</a>
+    </form>
+  </div>
+>>>>>>> bded1d1ed0a86288146d4d00cc99e8dc3f5adaf6
 {% endblock %}
