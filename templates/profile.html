@@ -1,16 +1,13 @@
 {% extends 'base.html' %}
 {% block title %}Profile · {{ user.username }}{% endblock %}
-
 {% block content %}
   {% set cache_v = session.get('avatar_ver', 0) %}
-
   <h1 class="page-title center">Your Profile</h1>
-
   <div class="grid" style="grid-template-columns: 320px 1fr; gap: var(--gap); align-items:start;">
     <!-- LEFT: Identity / Avatar / Stats -->
     <div class="card fade-in">
       <div class="row" style="gap:16px; align-items:center;">
-        <!-- Avatar upload form (logic from version A) -->
+        <!-- Avatar upload form -->
         <form method="post"
               action="{{ url_for('upload_avatar') }}"
               enctype="multipart/form-data"
@@ -52,18 +49,11 @@
 
       <div class="space"></div>
 
+      <!-- Stats: only Chapters read -->
       <div class="stats-grid">
         <div class="stat">
           <div class="stat-num">{{ user.no_of_chapters_read or 0 }}</div>
           <div class="stat-label">Chapters read</div>
-        </div>
-        <div class="stat">
-          <div class="stat-num">{{ my_reads_total or 0 }}</div>
-          <div class="stat-label">Tracked reads</div>
-        </div>
-        <div class="stat">
-          <div class="stat-num">{{ my_manga_count or 0 }}</div>
-          <div class="stat-label">Library titles</div>
         </div>
       </div>
 
@@ -77,50 +67,30 @@
       </div>
     </div>
 
-    <!-- RIGHT: Recent Activity + Account actions + Favorites -->
+    <!-- RIGHT: Account actions + Favorites (Recent Activity removed) -->
     <div class="card fade-in">
-      <!-- Recent Activity -->
-      <div class="card-header">
-        <div class="card-title">Recent Activity</div>
-      </div>
-
-      {% if recent_reads and recent_reads|length %}
-        <table class="table">
-          <thead>
-            <tr>
-              <th>When</th>
-              <th>Manga</th>
-              <th>Chapter</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for r in recent_reads %}
-              <tr>
-                <td class="card-sub">{{ r.last_read_at.strftime('%b %d, %Y %H:%M') if r.last_read_at else '—' }}</td>
-                <td>{{ r.manga_key }}</td>
-                <td>{{ r.chapter_key }}</td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      {% else %}
-        <div class="alert">No recent reads.</div>
-      {% endif %}
-
-      <div class="space"></div>
-
-      <!-- Account quick actions -->
+      <!-- Account: email + password -->
       <div class="card-header">
         <div class="card-title">Account</div>
       </div>
+
+      <!-- Change Email -->
+      <form class="form" method="post" action="{{ url_for('change_email') }}" style="max-width:520px; margin-bottom:16px;">
+        <label class="label">Email</label>
+        <input class="input" type="email" name="email" value="{{ user.email }}" required autocomplete="email">
+        <div class="row" style="gap:10px; flex-wrap:wrap; margin-top:8px;">
+          <button class="btn" type="submit">Save email</button>
+        </div>
+      </form>
+
+      <!-- Change Password opens dedicated page (new tab) -->
       <div class="row" style="gap:10px; flex-wrap:wrap;">
-        <a class="btn outline" href="#">Change password</a>
-        <a class="btn outline" href="#">Edit email</a>
+        <a class="btn outline" href="{{ url_for('password_form') }}" target="_blank" rel="noopener">Change password</a>
       </div>
 
       <div class="space"></div>
 
-      <!-- Favorites (from version A, styled into this card) -->
+      <!-- Favorites -->
       <div class="card-header">
         <div class="card-title">Favorites ({{ favorites|length }})</div>
       </div>
@@ -142,11 +112,9 @@
       {% else %}
         <p class="card-sub" style="padding: 0 16px 16px">No favorites yet. Go add some ⭐</p>
       {% endif %}
-
     </div>
   </div>
 
-  <!-- styles needed by avatar logic from version A -->
   <style>
     .hidden{ display:none; }
     .avatar-btn{ background:transparent; border:0; padding:0; cursor:pointer; }
@@ -155,11 +123,11 @@
       object-fit:cover; display:block;
       border: 3px solid color-mix(in oklab, var(--text, #e5e7eb), transparent 80%);
       box-shadow: 0 10px 30px rgba(0,0,0,.35);
-      background:#0b0f14; /* only visible while image loads */
+      background:#0b0f14;
     }
   </style>
 
-  <!-- avatar JS (version A) -->
+  <!-- avatar JS kept as-is -->
   <script>
     (function () {
       const trigger = document.getElementById('avatar-trigger');
@@ -167,27 +135,19 @@
       const form    = document.getElementById('avatar-form');
       const img     = document.getElementById('avatar-img');
 
-      // single click handler (prevents double dialogs)
       trigger && trigger.addEventListener('click', () => input && input.click());
-
-      // preview then submit once
       input && input.addEventListener('change', () => {
         if (!input.files || !input.files[0]) return;
         const blobUrl = URL.createObjectURL(input.files[0]);
         if (img) img.src = blobUrl;
-        // submit once after repaint
         setTimeout(() => form.submit(), 80);
       });
-
-      // robust refresh after navigation
       window.addEventListener('pageshow', () => {
         if (!img) return;
         if (img.src && img.src.indexOf('blob:') === 0) return;
         const base = img.getAttribute('data-src-base') || (img.src ? img.src.split('?v=')[0] : '');
         if (base) img.src = base + '?v=' + Date.now();
       });
-
-      // bulletproof error fallback (no Jinja inside JS)
       img && img.addEventListener('error', () => {
         const base = img.getAttribute('data-src-base');
         if (base && !img.dataset._retried) {

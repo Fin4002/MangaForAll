@@ -39,11 +39,18 @@
 
 <h2>Chapters</h2>
 {% if chapters %}
-  <table class="table">
+  <table class="table chapters-table">
     <tbody>
       {% for ch in chapters %}
-        <tr class="chapter-row">
-          <td>Chapter {{ loop.index }}</td>
+        <tr class="chapter-row"
+            data-href="{{ url_for('reader', folder=folder, chapter=ch, back=request.full_path) }}"
+            tabindex="0" role="link" aria-label="Open {{ ch }}">
+          <td>
+            <a class="chapter-link"
+               href="{{ url_for('reader', folder=folder, chapter=ch, back=request.full_path) }}">
+              {{ ch }}
+            </a>
+          </td>
         </tr>
       {% endfor %}
     </tbody>
@@ -51,4 +58,6 @@
 {% else %}
   <p>No chapters yet.</p>
 {% endif %}
+
+
 {% endblock %}

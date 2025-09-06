@@ -969,3 +969,12 @@ textarea.input{ min-height: 140px; resize: vertical; }
 .avatar-btn:focus-visible {
   outline: 3px solid var(--ring);
 }
+.chapters-table .chapter-link{
+  display:block;
+  width:100%; height:100%;
+  color: inherit;
+  text-decoration: none;
+  font: inherit;                 /* same font as before */
+}
+.chapters-table tr.chapter-row{ cursor:pointer; }
+.chapters-table tr.chapter-row:hover .chapter-link{ text-decoration: underline; }

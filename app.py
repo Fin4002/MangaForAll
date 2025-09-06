@@ -22,13 +22,15 @@ from urllib.parse import urlparse
 import glob, time
 from flask import (
     Flask, render_template, render_template_string, redirect, url_for,
-    request, flash, session, abort, Response  # ← add Response here
+    request, flash, session, abort, Response 
 )
-# or: from flask import Response, make_response
+
 
 import os, time
 from werkzeug.utils import secure_filename
 from flask import session, redirect, url_for, flash, request
+
+import re
 
 
 # ---------------------------
@@ -1200,9 +1202,88 @@ def wishlist_toggle(manga_id):
                 (u["user_id"], manga_id))
 
     return redirect(url_for("manga_detail", manga_id=manga_id))
+# --------------valid_email-------------#
+EMAIL_RE = re.compile(r"^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$", re.I)
+def is_valid_email(s: str) -> bool:
+    return bool(EMAIL_RE.match((s or "").strip()))
+
+# --- Change E-mail ---
+@app.route('/profile/email', methods=['POST'])
+@login_required
+def change_email():
+    u = current_user()
+    new_email = (request.form.get('email') or '').strip().lower()
+
+    if not new_email:
+        flash('Email cannot be empty.', 'warning')
+        return redirect(url_for('profile'))
+
+    if not is_valid_email(new_email):
+        flash('Please enter a valid email address.', 'warning')
+        return redirect(url_for('profile'))
+
+    # unchanged?
+    if (u.get('email') or '').strip().lower() == new_email:
+        flash('No changes to save.', 'info')
+        return redirect(url_for('profile'))
+
+    # already taken by someone else?
+    taken = query_one("SELECT 1 FROM users WHERE email=%s AND user_id<>%s", (new_email, u['user_id']))
+    if taken:
+        flash('That email is already in use.', 'danger')
+        return redirect(url_for('profile'))
+
+    try:
+        execute("UPDATE users SET email=%s WHERE user_id=%s", (new_email, u['user_id']))
+        flash('Email updated.', 'success')
+    except Exception as e:
+        flash(f'Could not update email: {e}', 'danger')
+
+    return redirect(url_for('profile'))
+# --- Change password ---
+@app.get('/profile/password')
+@login_required
+def password_form():
+    # Standalone page opened in a new tab
+    return render_template('change_password.html', user=current_user())
 
 
+@app.route('/profile/password', methods=['POST'])
+@login_required
+def change_password():
+    u = current_user()
+    if not u or not u.get('password_hash'):
+        flash('Cannot change password for this account.', 'danger')
+        return redirect(url_for('profile'))
 
+    current_pw = (request.form.get('current_password') or '').strip()
+    new_pw     = (request.form.get('new_password') or '').strip()
+    confirm_pw = (request.form.get('confirm_password') or '').strip()
+
+    # 1) Verify current password
+    if not current_pw or not check_password_hash(u['password_hash'], current_pw):
+        flash('Current password is incorrect.', 'danger')
+        return redirect(url_for('profile'))
+
+    # 3) Confirm match
+    if new_pw != confirm_pw:
+        flash('New password and confirmation do not match.', 'warning')
+        return redirect(url_for('profile'))
+
+    # 4) Don’t allow same-as-old
+    if check_password_hash(u['password_hash'], new_pw):
+        flash('New password cannot be the same as your current password.', 'info')
+        return redirect(url_for('profile'))
+
+    # 5) Update
+    try:
+        execute("UPDATE user_auth SET password_hash=%s WHERE user_id=%s",
+                (generate_password_hash(new_pw), u['user_id']))
+        flash('Password updated.', 'success')
+    except Exception as e:
+        flash(f'Could not update password: {e}', 'danger')
+
+    return redirect(url_for('profile'))
 
 # ---------------------------
 # Entrypoint

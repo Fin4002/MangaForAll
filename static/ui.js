@@ -454,3 +454,22 @@
     });
   });
 })();
+// Make whole chapter row clickable
+document.addEventListener('click', e => {
+  const row = e.target.closest('tr.chapter-row');
+  if (!row) return;
+  // If you clicked the real link, let it work normally
+  if (e.target.closest('a')) return;
+  const href = row.dataset.href;
+  if (href) window.location = href;
+});
+
+document.addEventListener('keydown', e => {
+  if (!(e.key === 'Enter' || e.key === ' ')) return;
+  const row = e.target.closest('tr.chapter-row');
+  if (!row) return;
+  e.preventDefault();
+  const href = row.dataset.href;
+  if (href) window.location = href;
+});
+
