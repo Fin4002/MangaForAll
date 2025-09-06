@@ -1,33 +1,96 @@
 {% extends 'base.html' %}
-{% block title %}My Profile{% endblock %}
+{% block title %}Profile · {{ user.username }}{% endblock %}
+
 {% block content %}
-  <div class="grid grid-2">
+  <h1 class="page-title center">Your Profile</h1>
+
+  <div class="grid" style="grid-template-columns: 320px 1fr; gap: var(--gap); align-items:start;">
+    <!-- Left: identity card -->
     <div class="card fade-in">
-      <div class="row" style="gap:16px">
+      <div class="row" style="gap:16px; align-items:center;">
         <div class="avatar"></div>
-        <div>
-          <div class="card-title" style="margin:0">{{ user.username }}</div>
-          <p class="card-sub">{{ user.email }}</p>
-          <span class="badge ok">Member</span>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div class="card-title" style="font-size:1.25rem">{{ user.username }}</div>
+          <div class="row" style="gap:8px; flex-wrap:wrap">
+            {% if is_admin(user) %}<span class="badge danger">Admin</span>{% endif %}
+            {% if is_content_manager(user) %}<span class="badge warn">Content Manager</span>{% endif %}
+            <span class="badge">Member since {{ user.joining_date.strftime('%b %d, %Y') if user.joining_date else '—' }}</span>
+          </div>
         </div>
       </div>
+
       <div class="space"></div>
-      <form class="form">
-        <label class="label">Display name</label>
-        <input class="input" value="{{ user.username }}">
-        <label class="label">Email</label>
-        <input class="input" type="email" value="{{ user.email }}">
-        <button class="btn" type="button">Save changes</button>
-      </form>
+
+      <div class="row" style="justify-content:space-between">
+        <span class="card-sub">Email</span>
+        <strong>{{ user.email or '—' }}</strong>
+      </div>
+
+      <div class="space"></div>
+
+      <div class="stats-grid">
+        <div class="stat">
+          <div class="stat-num">{{ user.no_of_chapters_read or 0 }}</div>
+          <div class="stat-label">Chapters read</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num">{{ my_reads_total or 0 }}</div>
+          <div class="stat-label">Tracked reads</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num">{{ my_manga_count or 0 }}</div>
+          <div class="stat-label">Library titles</div>
+        </div>
+      </div>
+
+      <div class="space"></div>
+
+      <div class="row" style="gap:10px; flex-wrap:wrap;">
+        <a class="btn outline" href="{{ url_for('logout') }}">Logout</a>
+        {% if is_content_manager(user) %}
+          <a class="btn" href="{{ url_for('content_dashboard') }}">Open Content Dashboard</a>
+        {% endif %}
+      </div>
     </div>
 
+    <!-- Right: activity / lists -->
     <div class="card fade-in">
+      <div class="card-header">
+        <div class="card-title">Recent Activity</div>
+      </div>
+
+      {% if recent_reads and recent_reads|length %}
+        <table class="table">
+          <thead>
+            <tr>
+              <th>When</th>
+              <th>Manga</th>
+              <th>Chapter</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in recent_reads %}
+              <tr>
+                <td class="card-sub">{{ r.last_read_at.strftime('%b %d, %Y %H:%M') if r.last_read_at else '—' }}</td>
+                <td>{{ r.manga_key }}</td>
+                <td>{{ r.chapter_key }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="alert">No recent reads. Touch grass or open a chapter, your call.</div>
+      {% endif %}
+
+      <div class="space"></div>
+
       <div class="card-header">
         <div class="card-title">Account</div>
       </div>
-      <p class="card-sub">Joined: {{ user.joining_date }}</p>
-      <p class="card-sub">Chapters read: {{ user.no_of_chapters_read or 0 }}</p>
-      <a class="btn outline" href="{{ url_for('logout') if url_for else '#' }}">Logout</a>
+      <div class="row" style="gap:10px; flex-wrap:wrap;">
+        <a class="btn outline" href="#">Change password</a>
+        <a class="btn outline" href="#">Edit email</a>
+      </div>
     </div>
   </div>
 {% endblock %}

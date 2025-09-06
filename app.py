@@ -13,7 +13,7 @@ from flask import (
     request, flash, session, abort
 )
 from werkzeug.security import generate_password_hash, check_password_hash
-
+import sqlite3
 import mysql.connector
 from mysql.connector import pooling
 
@@ -235,16 +235,44 @@ def index():
         ORDER BY manga_id DESC
     """) #gets manga information from manga table
     return render_template('index.html', mangas=mangas, user=current_user())
-
-@app.route('/manga')
+#238
+# @app.route('/manga')
+# def manga_list():
+#     mangas = query_all("""
+#         SELECT manga_id, Title, Author_name, synopsis, publication_status, CoverPath
+#         FROM manga
+#         ORDER BY Title ASC
+#     """)
+#     return render_template('manga.html', mangas=mangas, user=current_user())
+@app.route('/manga', methods=['GET'])
 def manga_list():
-    mangas = query_all("""
+    # Read query from ?q=... (empty string if missing)
+    q = (request.args.get('q') or '').strip()
+
+    base_sql = """
         SELECT manga_id, Title, Author_name, synopsis, publication_status, CoverPath
         FROM manga
-        ORDER BY Title ASC
-    """)
-    return render_template('manga.html', mangas=mangas, user=current_user())
+    """
 
+    params = ()
+    if q:
+        # Search across title, author, and synopsis
+        like = f"%{q}%"
+        sql = base_sql + """
+            WHERE Title LIKE %s
+               OR Author_name LIKE %s
+               OR synopsis LIKE %s
+            ORDER BY Title ASC
+        """
+        params = (like, like, like)
+    else:
+        # Default (no search term): alphabetical listing
+        sql = base_sql + " ORDER BY Title ASC"
+
+    mangas = query_all(sql, params)
+    # pass q back so the input keeps the text and the template can show a 'Clear' link
+    return render_template('manga.html', mangas=mangas, q=q, user=current_user())
+#275
 #work in progress
 @app.route('/manga/<int:manga_id>')
 def manga_detail(manga_id):

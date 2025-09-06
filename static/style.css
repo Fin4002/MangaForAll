@@ -556,3 +556,73 @@ body{ font-size: 16.5px; }
 .pd-form .input{
   min-height: 48px;  /* easier to type */
 }
+/* Profile stats */
+.stats-grid{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap:12px;
+}
+.stat{
+  background: color-mix(in oklab, var(--text), transparent 96%);
+  border:1px solid color-mix(in oklab, var(--text), transparent 90%);
+  border-radius: var(--radius-sm);
+  padding:14px;
+  text-align:center;
+}
+.stat-num{
+  font-weight:800;
+  font-size:1.4rem;
+}
+.stat-label{
+  margin-top:2px;
+  color:var(--muted);
+  font-size:.85rem;
+}
+/* Profile stats */
+.stats-grid{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap:12px;
+}
+.stat{
+  background: color-mix(in oklab, var(--text), transparent 96%);
+  border:1px solid color-mix(in oklab, var(--text), transparent 90%);
+  border-radius: var(--radius-sm);
+  padding:14px;
+  text-align:center;
+}
+.stat-num{
+  font-weight:800;
+  font-size:1.4rem;
+}
+.stat-label{
+  margin-top:2px;
+  color:var(--muted);
+  font-size:.85rem;
+}
+.nav-search {
+  display: flex;
+  gap: .5rem;
+  align-items: center;
+  margin: 0 1rem;
+}
+
+.nav-search input[type="search"] {
+  padding: .45rem .6rem;
+  border: 1px solid #ddd;
+  border-radius: .5rem;
+  min-width: 220px;
+}
+
+.nav-search button {
+  padding: .45rem .8rem;
+  border: 0;
+  border-radius: .5rem;
+  cursor: pointer;
+}
+.manga-search {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.muted { color: #777; }

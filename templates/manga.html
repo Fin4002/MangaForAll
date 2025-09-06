@@ -3,7 +3,24 @@
 {% block content %}
   <h1 class="page-title">Browse Manga</h1>
 
-  {% if mangas %}
+  <!-- 🔎 Search form goes right under the title -->
+  <form class="manga-search" action="{{ url_for('manga_list') }}" method="get" style="margin: 1rem 0; display:flex; gap:.5rem; align-items:center;">
+    <input
+      type="search"
+      name="q"
+      value="{{ q or '' }}"
+      placeholder="Search by title, author, or synopsis"
+      aria-label="Search mangas"
+      class="input"
+      style="flex:1;"
+    />
+    <button type="submit" class="btn">Search</button>
+    {% if q %}
+      <a class="btn outline" href="{{ url_for('manga_list') }}">Clear</a>
+    {% endif %}
+  </form>
+
+  {% if mangas and mangas|length %}
     <div class="grid grid-cards">
       {% for m in mangas %}
         <a class="card card-link" href="{{ url_for('manga_detail', manga_id=m.manga_id) }}" aria-label="{{ m.Title }}">
@@ -18,6 +35,8 @@
       {% endfor %}
     </div>
   {% else %}
-    <p>Empty. Approve something first.</p>
+    <p class="muted">
+      No mangas found{% if q %} for “{{ q }}”{% endif %}. Try another search.
+    </p>
   {% endif %}
 {% endblock %}
