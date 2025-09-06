@@ -1,47 +1,25 @@
-{% extends 'base.html' %}
-{% block title %}Create New Post{% endblock %}
+{% extends "base.html" %}
+{% block title %}New Post · MangaForAll{% endblock %}
 
 {% block content %}
-  <div class="modal is-open" data-modal id="post-modal">
-    <div class="modal-backdrop" data-modal-close></div>
+  <div class="card fade-in" style="max-width: 900px; margin: 40px auto; padding: 32px;">
+    <h1 class="page-title">Create New Post</h1>
+    <p class="card-sub">Share your thoughts with the community. Add an image if you like.</p>
 
-    <div class="modal-card fade-in" role="dialog" aria-modal="true" aria-labelledby="post-modal-title">
-      <!-- Header -->
-      <div class="modal-header">
-        <h2 class="modal-title" id="post-modal-title">Create New Post</h2>
-        <button type="button" class="btn outline" data-modal-close aria-label="Close">✕</button>
+    <form method="post" enctype="multipart/form-data" class="form">
+      <label class="label" for="title">Title</label>
+      <input id="title" type="text" name="title" class="input" required>
+
+      <label class="label" for="content">Content</label>
+      <textarea id="content" name="content" rows="12" class="input" required></textarea>
+
+      <label class="label" for="image">Image (optional)</label>
+      <input id="image" type="file" name="image" accept="image/*" class="input">
+
+      <div class="row" style="justify-content:flex-end; margin-top:16px">
+        <a href="{{ url_for('forum') }}" class="btn outline">Cancel</a>
+        <button type="submit" class="btn">Post</button>
       </div>
-
-      <!-- Body -->
-      <form class="form" method="post" enctype="multipart/form-data">
-        <div>
-          <div class="label">Title</div>
-          <input class="input" type="text" name="title" required placeholder="Give it a name people will actually click">
-        </div>
-
-        <div>
-          <div class="label">Content</div>
-          <textarea class="input" name="content" rows="6" required placeholder="Say something worth reading"></textarea>
-        </div>
-
-        <div>
-          <div class="label">Image (optional)</div>
-          <label class="file-input">
-            <input type="file" name="image" accept="image/*">
-            <span>Select an image…</span>
-          </label>
-        </div>
-
-        <!-- Footer actions -->
-        <div class="modal-footer">
-          <button type="button" class="btn outline" data-modal-close>Cancel</button>
-          <button type="submit" class="btn">Post</button>
-        </div>
-      </form>
-    </div>
+    </form>
   </div>
-
-  <noscript>
-    <div class="alert warn">JavaScript is disabled. The form still works, it just won’t appear as a modal.</div>
-  </noscript>
 {% endblock %}

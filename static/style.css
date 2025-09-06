@@ -795,3 +795,33 @@ textarea.input{ min-height: 140px; resize: vertical; }
   gap: 0.5rem;
 }
 .muted { color: #777; }
+/* Dialog container */
+.dialog{
+  position: fixed; inset: 0;
+  display: grid; place-items: center;
+  visibility: hidden; opacity: 0;
+  transition: opacity .18s ease, visibility .18s ease;
+  z-index: 100;
+}
+.dialog.open{ visibility: visible; opacity: 1; }
+
+.dialog__backdrop{
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(2px);
+}
+
+/* The card inside the dialog */
+.dialog__card{
+  position: relative;
+  width: min(720px, 92vw);
+  max-height: 85vh;
+  overflow: auto;
+  padding: 20px;
+}
+
+/* Close button in corner */
+.dialog__close{
+  position: absolute; right: 10px; top: 10px;
+  padding: 6px 10px;
+}
