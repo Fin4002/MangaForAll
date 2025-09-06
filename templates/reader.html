@@ -4,15 +4,10 @@
 {% block content %}
   <div class="reader-wrap">
     <h1 class="page-title center">{{ chapter.title }}</h1>
-    {# pick a smart back target: explicit ?back=..., else referrer, else fallback #}
-    {% set back_url = request.args.get('back') or request.referrer or url_for('content_dashboard') %}
 
+    {% set back_url = request.args.get('back') or request.referrer or url_for('content_dashboard') %}
     <div style="margin:12px 0;">
-      <a class="btn ghost"
-        href="{{ back_url }}"
-        onclick="if (history.length > 1) { history.back(); return false; }">
-        ← Back
-      </a>
+      <a class="btn ghost" href="{{ back_url }}" onclick="if (history.length > 1) { history.back(); return false; }">← Back</a>
     </div>
 
     <div class="row" style="justify-content:space-between; margin:12px 0;">
@@ -21,6 +16,11 @@
       {% else %}
         <button id="prev-chapter-btn" class="btn outline" disabled>Prev</button>
       {% endif %}
+
+      <div class="row" style="gap:.5rem;">
+        <button id="popout-btn" class="btn outline" type="button" title="Pop-out (P)">Pop-out</button>
+        <button id="fs-btn" class="btn outline" type="button" title="Fullscreen (F)">Fullscreen</button>
+      </div>
 
       {% if next_chapter %}
         <a id="next-chapter-btn" class="btn" href="{{ url_for('reader', folder=folder, chapter=next_chapter) }}">Next</a>
@@ -36,20 +36,49 @@
     {% else %}
       <p class="card-sub center">No pages for this chapter.</p>
     {% endif %}
-    
+
     <div class="row" style="justify-content:space-between; margin:12px 0;">
-      
       {% if prev_chapter %}
         <a id="prev-chapter-btn-bottom" class="btn outline" href="{{ url_for('reader', folder=folder, chapter=prev_chapter) }}">Prev</a>
       {% else %}
         <button id="prev-chapter-btn-bottom" class="btn outline" disabled>Prev</button>
       {% endif %}
-
       {% if next_chapter %}
         <a id="next-chapter-btn-bottom" class="btn" href="{{ url_for('reader', folder=folder, chapter=next_chapter) }}">Next</a>
       {% else %}
         <button id="next-chapter-btn-bottom" class="btn outline" disabled>Next</button>
       {% endif %}
     </div>
+  </div>
+
+  <!-- Expose page URLs to JS -->
+  <script>
+    window.READER_PAGES = {{ pages|tojson|safe }};
+    window.READER_INDEX = 0;
+  </script>
+
+  <!-- Pop-out -->
+  <div
+    id="reader-popout"
+    class="popout popout-hidden"
+    aria-live="polite"
+    aria-label="Reader pop-out"
+    data-prev-ch-url="{{ url_for('reader', folder=folder, chapter=prev_chapter) if prev_chapter else '' }}"
+    data-next-ch-url="{{ url_for('reader', folder=folder, chapter=next_chapter) if next_chapter else '' }}"
+  >
+    <div class="popout-header">
+      <strong class="popout-title">{{ chapter.title }}</strong>
+      <div class="row" style="gap:.5rem;">
+        <button class="btn outline" data-popout-prev title="Prev chapter (←)">←</button>
+        <button class="btn outline" data-popout-next title="Next chapter (→)">→</button>
+        <button class="btn outline" data-popout-close title="Close (P)">✕</button>
+      </div>
+    </div>
+
+    <div class="popout-body" id="popout-scroll">
+      <div id="popout-pages"></div>
+    </div>
+
+    <div class="popout-resize" title="Drag to resize"></div>
   </div>
 {% endblock %}

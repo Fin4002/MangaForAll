@@ -825,3 +825,138 @@ textarea.input{ min-height: 140px; resize: vertical; }
   position: absolute; right: 10px; top: 10px;
   padding: 6px 10px;
 }
+/* ===== Reader Fullscreen ===== */
+:root.fs, :fullscreen {
+  --bg: #000;                     /* force black backdrop */
+}
+
+/* Stretch the shell to edges while in FS */
+:root.fs .nav,
+:root.fs .footer,
+:root.fs .page-title,
+:root.fs .card-sub,
+:root.fs a.btn.ghost {            /* the back button block */
+  display: none !important;
+}
+
+:root.fs .container {
+  width: 100vw !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+:root.fs .reader-wrap {
+  width: 100vw !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: #000;
+}
+
+/* Make each page fill the viewport HEIGHT, preserve aspect, black bars left/right */
+:root.fs .page-img {
+  display: block;
+  width: auto !important;
+  height: 100vh !important;       /* each page is a “screen” */
+  max-width: 100vw !important;
+  margin: 0 auto !important;
+  object-fit: contain !important;
+  background: #000 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Hide prev/next rows inside FS; reading is scroll or keys */
+:root.fs #prev-chapter-btn,
+:root.fs #next-chapter-btn,
+:root.fs #prev-chapter-btn-bottom,
+:root.fs #next-chapter-btn-bottom {
+  display: none !important;
+}
+
+/* Keep the toggle visible if you also placed it at bottom; otherwise top one is fine */
+:root.fs #fs-btn,
+:root.fs #fs-btn-bottom {
+  position: fixed;
+  z-index: 1000;
+  right: 16px;
+  top: 14px;                      /* move it to the corner */
+  opacity: .9;
+}
+
+/* Slight hover hint so it doesn’t vanish into the void */
+:root.fs #fs-btn:hover,
+:root.fs #fs-btn-bottom:hover {
+  opacity: 1;
+}
+
+/* Pop-out shell: rely on custom resize (no native handle) */
+/* ===== POP-OUT READER ===== */
+:root{
+  /* fallback tokens if you don't have these */
+  --card: #0f1a24;
+  --text: #d9e1ea;
+  --shadow: 0 10px 30px rgba(0,0,0,.35);
+}
+
+.popout{
+  position: fixed;
+  z-index: 4000;
+  left: 16px; top: 16px;
+  width: 420px; height: 320px;
+
+  /* we use custom resize grip, not native */
+  overflow: hidden;
+  min-width: 260px;
+  min-height: 180px;
+
+  background: var(--card);
+  border: 1px solid color-mix(in oklab, var(--text), transparent 90%);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+}
+.popout-hidden{ display:none; }
+
+.popout-header{
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 10px;
+  cursor: move;
+  background: color-mix(in oklab, var(--text), transparent 95%);
+  border-bottom: 1px solid color-mix(in oklab, var(--text), transparent 92%);
+}
+.popout-title{ font-weight: 800; font-size: .95rem; margin-right: 8px; }
+
+.popout-body{
+  flex: 1; min-height: 0;
+  overflow: auto;
+  background: #000;
+  scroll-snap-type: y proximity;
+  padding-bottom: 14px; /* keep corner clear for the grip */
+}
+
+#popout-pages{
+  display: block;
+  min-height: 100%;
+}
+#popout-pages img{
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: contain;
+  background:#000;
+  scroll-snap-align: start;
+}
+
+/* big corner grip, always on top */
+.popout-resize{
+  position:absolute; right:6px; bottom:6px;
+  width: 28px; height: 28px;
+  cursor: nwse-resize;
+  z-index: 10;
+  opacity: .95;
+  background:
+    linear-gradient(135deg,
+      transparent 0 50%, color-mix(in oklab, var(--text), transparent 60%) 50% 100%);
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+}

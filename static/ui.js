@@ -168,3 +168,277 @@
 
   showInitial();
 })();
+// ----- Reader fullscreen -----
+(function () {
+  const docEl = document.documentElement;
+  const btns = Array.from(document.querySelectorAll('#fs-btn, #fs-btn-bottom'));
+
+  if (!btns.length) return;
+
+  function inFS() {
+    return document.fullscreenElement != null || docEl.classList.contains('fs');
+  }
+
+  async function enterFS() {
+    try {
+      if (!document.fullscreenElement && docEl.requestFullscreen) {
+        await docEl.requestFullscreen({ navigationUI: "hide" }).catch(()=>{});
+      }
+    } catch {}
+    docEl.classList.add('fs');
+    updateButtons();
+  }
+
+  async function exitFS() {
+    try {
+      if (document.fullscreenElement && document.exitFullscreen) {
+        await document.exitFullscreen().catch(()=>{});
+      }
+    } catch {}
+    docEl.classList.remove('fs');
+    updateButtons();
+  }
+
+  function toggleFS() {
+    inFS() ? exitFS() : enterFS();
+  }
+
+  function updateButtons() {
+    btns.forEach(b => b.textContent = inFS() ? 'Exit Fullscreen' : 'Fullscreen');
+  }
+
+  // Click handlers
+  btns.forEach(b => b.addEventListener('click', toggleFS));
+
+  // Keyboard: press "f" to toggle
+  document.addEventListener('keydown', e => {
+    if (e.key.toLowerCase() === 'f') {
+      e.preventDefault();
+      toggleFS();
+    }
+  });
+
+  // Sync on system-level FS changes
+  document.addEventListener('fullscreenchange', () => {
+    if (!document.fullscreenElement) docEl.classList.remove('fs');
+    updateButtons();
+  });
+})();
+// ===== Fullscreen toggle for reader (kept small and polite) =====
+(function () {
+  const docEl = document.documentElement;
+  const fsBtn = document.getElementById('fs-btn');
+  if (!fsBtn) return;
+
+  function inFS(){ return document.fullscreenElement != null || docEl.classList.contains('fs'); }
+  async function enter(){
+    try { if (!document.fullscreenElement && docEl.requestFullscreen) await docEl.requestFullscreen({ navigationUI:"hide" }); } catch(e){}
+    docEl.classList.add('fs');
+    fsBtn.textContent = 'Exit Fullscreen';
+  }
+  async function exit(){
+    try { if (document.fullscreenElement && document.exitFullscreen) await document.exitFullscreen(); } catch(e){}
+    docEl.classList.remove('fs');
+    fsBtn.textContent = 'Fullscreen';
+  }
+  function toggle(){ inFS() ? exit() : enter(); }
+
+  fsBtn.addEventListener('click', toggle);
+  document.addEventListener('keydown', e => { if (e.key.toLowerCase() === 'f') { e.preventDefault(); toggle(); } });
+  document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement) docEl.classList.remove('fs'); fsBtn.textContent = inFS() ? 'Exit Fullscreen' : 'Fullscreen'; });
+})();
+
+// ===== Reader Pop-out (scroll-to-read, draggable, resizable, chapter jumping) =====
+(function () {
+  const el = document.getElementById('reader-popout');
+  const btnToggle = document.getElementById('popout-btn');
+  if (!el || !btnToggle) return;
+
+  const btnPrev  = el.querySelector('[data-popout-prev]');
+  const btnNext  = el.querySelector('[data-popout-next]');
+  const btnClose = el.querySelector('[data-popout-close]');
+  const header   = el.querySelector('.popout-header');
+  const grip     = el.querySelector('.popout-resize');
+
+  const scroller  = document.getElementById('popout-scroll');
+  const pagesWrap = document.getElementById('popout-pages');
+  if (!scroller || !pagesWrap) { console.warn('[popout] missing #popout-scroll/#popout-pages'); return; }
+
+  const nextChUrl = el.dataset.nextChUrl || '';
+  const prevChUrl = el.dataset.prevChUrl || '';
+
+  let pages = Array.isArray(window.READER_PAGES) ? window.READER_PAGES.slice() : [];
+  let idx   = Number.isInteger(window.READER_INDEX) ? window.READER_INDEX : 0;
+  idx = Math.max(0, Math.min(idx, Math.max(0, pages.length - 1)));
+
+  // drag/resize state
+  let pos = { x: null, y: null, w: 420, h: 320 };
+  function clamp(v, min, max){ return Math.max(min, Math.min(max, v)); }
+  function getPoint(e){ if (e.touches && e.touches[0]) return { x:e.touches[0].clientX, y:e.touches[0].clientY }; return { x:e.clientX, y:e.clientY }; }
+  function applyRect(){ el.style.width = pos.w + 'px'; el.style.height = pos.h + 'px'; el.style.left = pos.x + 'px'; el.style.top = pos.y + 'px'; }
+
+  // build page stack (fallback to DOM if server list is empty)
+  let built = false;
+  function buildPages(){
+    if (built) return;
+    if (!pages.length) {
+      const fromDom = Array.from(document.querySelectorAll('.page-img')).map(im => im.currentSrc || im.src);
+      if (fromDom.length) { console.warn('[popout] READER_PAGES empty; using .page-img elements'); pages = fromDom; }
+    }
+    const frag = document.createDocumentFragment();
+    if (!pages.length) {
+      const empty = document.createElement('div');
+      empty.style.color = '#aaa';
+      empty.style.padding = '1rem';
+      empty.textContent = 'No pages in this chapter.';
+      frag.appendChild(empty);
+    } else {
+      pages.forEach((src, i) => {
+        const im = document.createElement('img');
+        im.src = src;
+        im.alt = `page ${i + 1}`;
+        im.decoding = 'async';
+        im.loading = 'eager';
+        im.className = 'popout-page';
+        frag.appendChild(im);
+      });
+    }
+    pagesWrap.replaceChildren(frag);
+    built = true;
+    console.log('[popout] built', pages.length, 'pages');
+  }
+
+  function scrollToIndex(i, instant=false){
+    if (!pages.length) return;
+    i = clamp(i, 0, pages.length - 1);
+    const target = pagesWrap.children[i];
+    if (!target) return;
+    if (instant) scroller.scrollTop = target.offsetTop;
+    else scroller.scrollTo({ top: target.offsetTop, behavior: 'smooth' });
+  }
+
+  // observe which page is most visible inside the popout
+  let io;
+  function watchVisibility(){
+    if (io) io.disconnect();
+    io = new IntersectionObserver(entries => {
+      let bestI = idx, bestR = 0;
+      for (const e of entries) {
+        if (e.intersectionRatio >= bestR) {
+          bestR = e.intersectionRatio;
+          bestI = Array.prototype.indexOf.call(pagesWrap.children, e.target);
+        }
+      }
+      if (bestR > 0 && bestI !== idx) idx = bestI;
+    }, { root: scroller, threshold: Array.from({length:11}, (_,i)=>i/10) });
+    Array.from(pagesWrap.children).forEach(img => io.observe(img));
+  }
+
+  function show(){
+    el.classList.remove('popout-hidden');
+    buildPages();
+    if (pos.x == null && pos.y == null) {
+      const pad = 16;
+      pos.w = clamp(pos.w, 260, window.innerWidth - 2*pad);
+      pos.h = clamp(pos.h, 180, window.innerHeight - 2*pad);
+      pos.x = window.innerWidth - pos.w - pad;
+      pos.y = window.innerHeight - pos.h - pad;
+      applyRect();
+    }
+    scrollToIndex(idx, true);
+    watchVisibility();
+    console.log('[popout] shown');
+  }
+  function hide(){ el.classList.add('popout-hidden'); if (io) io.disconnect(); console.log('[popout] hidden'); }
+  function toggle(){ el.classList.contains('popout-hidden') ? show() : hide(); }
+
+  // drag by header
+  header.addEventListener('mousedown', startDrag);
+  header.addEventListener('touchstart', startDrag, {passive:false});
+  function startDrag(e){
+    e.preventDefault();
+    const start = getPoint(e);
+    const startX = el.offsetLeft;
+    const startY = el.offsetTop;
+    function move(ev){
+      const p = getPoint(ev);
+      pos.x = clamp(startX + (p.x - start.x), 8, window.innerWidth - el.offsetWidth - 8);
+      pos.y = clamp(startY + (p.y - start.y), 8, window.innerHeight - el.offsetHeight - 8);
+      applyRect();
+    }
+    function up(){ window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up);
+                  window.removeEventListener('touchmove', move); window.removeEventListener('touchend', up); }
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+    window.addEventListener('touchmove', move, {passive:false});
+    window.addEventListener('touchend', up);
+  }
+
+  // custom resize via corner grip
+  grip.addEventListener('mousedown', startResize);
+  grip.addEventListener('touchstart', startResize, {passive:false});
+  function startResize(e){
+    e.preventDefault();
+    const start = getPoint(e);
+    const startW = el.offsetWidth, startH = el.offsetHeight;
+    const startX = el.offsetLeft,  startY = el.offsetTop;
+    function move(ev){
+      const p = getPoint(ev);
+      pos.w = clamp(startW + (p.x - start.x), 240, window.innerWidth - startX - 8);
+      pos.h = clamp(startH + (p.y - start.y), 160, window.innerHeight - startY - 8);
+      applyRect();
+    }
+    function up(){ window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up);
+                  window.removeEventListener('touchmove', move); window.removeEventListener('touchend', up); }
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+    window.addEventListener('touchmove', move, {passive:false});
+    window.addEventListener('touchend', up);
+  }
+
+  // controls: pop-out toggle and close
+  btnToggle.addEventListener('click', toggle);
+  btnClose  && btnClose.addEventListener('click', hide);
+
+  // chapter-only navigation on buttons and arrows
+  function jumpPrevChapter(){ if (prevChUrl) location.href = prevChUrl; }
+  function jumpNextChapter(){ if (nextChUrl) location.href = nextChUrl; }
+  btnPrev && btnPrev.addEventListener('click', jumpPrevChapter);
+  btnNext && btnNext.addEventListener('click', jumpNextChapter);
+
+  document.addEventListener('keydown', e => {
+    const k = e.key.toLowerCase();
+    if (k === 'p') { e.preventDefault(); toggle(); }
+    if (el.classList.contains('popout-hidden')) return;
+    if (k === 'arrowleft')  { e.preventDefault(); jumpPrevChapter(); }
+    if (k === 'arrowright') { e.preventDefault(); jumpNextChapter(); }
+  });
+
+  // keep popout on-screen on window resize
+  window.addEventListener('resize', () => {
+    if (el.classList.contains('popout-hidden')) return;
+    pos.x = clamp(el.offsetLeft, 8, window.innerWidth  - el.offsetWidth - 8);
+    pos.y = clamp(el.offsetTop,  8, window.innerHeight - el.offsetHeight - 8);
+    applyRect();
+  });
+
+  // optional: keep popout in sync with main scroll when open
+  const pageImgs = Array.from(document.querySelectorAll('.page-img'));
+  function syncFromMain(){
+    if (!pageImgs.length) return;
+    let best = 0, bestDist = Infinity;
+    const y = window.scrollY + window.innerHeight * 0.35;
+    pageImgs.forEach((im, i) => {
+      const rect = im.getBoundingClientRect();
+      const center = rect.top + window.scrollY + rect.height/2;
+      const d = Math.abs(center - y);
+      if (d < bestDist) { best = i; bestDist = d; }
+    });
+    if (best !== idx) { idx = best; if (!el.classList.contains('popout-hidden')) scrollToIndex(idx, true); }
+  }
+  if (pageImgs.length) {
+    window.addEventListener('scroll', () => { if (!el.classList.contains('popout-hidden')) syncFromMain(); }, { passive: true });
+  }
+
+  console.log('[popout] ready');
+})();

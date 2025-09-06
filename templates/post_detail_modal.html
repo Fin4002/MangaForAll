@@ -1,11 +1,46 @@
-{# templates/post_detail_modal.html #}
+{# templates/post_detail_modal.html (MERGED) #}
 <div class="pd-modal">
-  <header class="pd-head">
-    <div class="avatar">{{ (post.author or 'A')[:1] }}</div>
-    <div>
-      <div class="pd-name">{{ post.author or 'Anonymous' }}</div>
-      <div class="pd-sub">Post #{{ post.post_id }}</div>
+
+  <!-- Header: avatar + author + post id + title + mod controls -->
+  <header class="pd-head row" style="justify-content:space-between; align-items:center;">
+    <div class="row" style="gap:10px; align-items:center;">
+      <div class="avatar">{{ (post.author or 'A')[:1] }}</div>
+      <div>
+        <div class="pd-name">{{ post.author or 'Anonymous' }}</div>
+        <div class="pd-sub">Post #{{ post.post_id }}</div>
+        {% if post.title %}<div class="pd-title">{{ post.title }}</div>{% endif %}
+      </div>
     </div>
+
+    {% if user and is_moderator(user) %}
+      <div class="row" style="gap:8px; align-items:center;">
+        {% if post.user_id %}
+          {% if not user_id_is_banned(post.user_id) %}
+              <form method="post"
+                  action="{{ url_for('mod_ban_user', user_id=post.user_id) }}"
+                  class="row" style="gap:6px; align-items:center;">
+              <input name="reason" class="input" placeholder="Reason">
+              <input name="days" class="input" type="number" min="0" placeholder="Days" style="width:80px">
+              <input type="hidden" name="next" value="{{ url_for('forum') }}">
+              <button class="btn warning" type="submit">Ban Author</button>
+            </form>
+          {% else %}
+                          <form method="post"
+                    action="{{ url_for('mod_unban_user', user_id=post.user_id) }}">
+                <input type="hidden" name="next" value="{{ url_for('forum') }}">
+                <button class="btn outline" type="submit">Unban Author</button>
+              </form> 
+          {% endif %}
+          {% endif %}
+
+              <form method="post"
+                action="{{ url_for('mod_delete_post', post_id=post.post_id) }}"
+                onsubmit="return confirm('Delete this post and its comments?');">
+            <input type="hidden" name="next" value="{{ url_for('forum') }}">
+            <button class="btn danger" type="submit">Delete Post</button>
+            </form>
+            </div>
+          {% endif %}
   </header>
 
   {% if post.image %}
@@ -46,4 +81,5 @@
   {% else %}
     <p class="card-sub">Please <a href="{{ url_for('login') }}">log in</a> to comment.</p>
   {% endif %}
+
 </div>
