@@ -1,6 +1,6 @@
 @echo off
 REM === Activate virtual environment ===
-call venv\Scripts\activate
+call .venv\Scripts\activate
 
 REM === Install/update dependencies ===
 pip install -r requirements.txt

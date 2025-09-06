@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 CREATE DATABASE mangaforall;
 USE mangaforall;
 CREATE TABLE Users (
@@ -160,4 +161,168 @@ ALTER TABLE manga
 ADD COLUMN CoverPath VARCHAR(255) NULL AFTER synopsis;
 INSERT INTO admin (name) VALUES ('SuperAdmin');
 ALTER TABLE users
+=======
+CREATE DATABASE mangaforall;
+USE mangaforall;
+CREATE TABLE Users (
+    user_id INT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(50) NOT NULL,
+    joining_date DATE,
+    no_of_chapters_read INT ,
+    email VARCHAR(100)
+) ENGINE=InnoDB;
+
+CREATE TABLE Admin (
+    admin_id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(50)
+) ENGINE=InnoDB;
+
+CREATE TABLE User_auth (
+    user_id INT PRIMARY KEY,
+    password_hash VARCHAR(255) NOT NULL,
+    admin_id INT,
+    FOREIGN KEY (user_id) REFERENCES Users(user_id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (admin_id) REFERENCES Admin(admin_id)
+        ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE Manga (
+    manga_id INT PRIMARY KEY AUTO_INCREMENT,
+    publication_status VARCHAR(20),
+    title VARCHAR(100),
+    author_name VARCHAR(100),
+    synopsis TEXT,
+    user_id INT,
+    admin_id INT,
+    CoverPath varchar(100),
+    FOREIGN KEY (user_id) REFERENCES Users(user_id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (admin_id) REFERENCES Admin(admin_id)
+        ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE Reports (
+    report_id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT,
+    admin_id INT,
+    FOREIGN KEY (user_id) REFERENCES Users(user_id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (admin_id) REFERENCES Admin(admin_id)
+        ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE Forum_posts (
+    post_id INT PRIMARY KEY AUTO_INCREMENT,
+    content TEXT,
+	author varchar(100),
+    title VARCHAR(100),
+    image mediumblob,
+  	user_id INT,
+    admin_id INT,
+	image_mime VARCHAR(64) NULL,
+    FOREIGN KEY (user_id) REFERENCES Users(user_id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (admin_id) REFERENCES Admin(admin_id)
+        ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE Forum_comments (
+    comment_id INT PRIMARY KEY AUTO_INCREMENT,
+    content TEXT,
+    user_id INT,
+    post_id INT,
+    admin_id INT,
+    FOREIGN KEY (user_id) REFERENCES Users(user_id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (post_id) REFERENCES Forum_posts(post_id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (admin_id) REFERENCES Admin(admin_id)
+        ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE Review_rating (
+    review_id INT PRIMARY KEY,
+    reviews TEXT,
+    ratings INT CHECK (ratings BETWEEN 1 AND 5),
+    user_id INT,
+    manga_id INT,
+    FOREIGN KEY (user_id) REFERENCES Users(user_id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (manga_id) REFERENCES Manga(manga_id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE Bookmarks (
+    bookmark_id INT PRIMARY KEY,
+    manga_id INT,
+    user_id INT,
+    FOREIGN KEY (manga_id) REFERENCES Manga(manga_id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES Users(user_id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE Wishlist (
+    wishlist_id INT PRIMARY KEY,
+    user_id INT,
+    manga_id INT,
+    added_at DATE,
+    FOREIGN KEY (user_id) REFERENCES Users(user_id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (manga_id) REFERENCES Manga(manga_id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE Genre (
+    tag_id INT PRIMARY KEY,
+    manga_id INT,
+    FOREIGN KEY (manga_id) REFERENCES Manga(manga_id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE Genre_name (
+    tag_id INT PRIMARY KEY,
+    name VARCHAR(50),
+    FOREIGN KEY (tag_id) REFERENCES Genre(tag_id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE User_tags (
+    user_tag_id INT PRIMARY KEY,
+    user_id INT,
+    post_id INT,
+    FOREIGN KEY (user_id) REFERENCES Users(user_id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (post_id) REFERENCES Forum_posts(post_id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE Tag_name (
+    user_tag_id INT PRIMARY KEY,
+    tag_name VARCHAR(50),
+    FOREIGN KEY (user_tag_id) REFERENCES User_tags(user_tag_id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE Content_manager (
+    admin_id INT PRIMARY KEY,
+    no_of_contents_added INT,
+    no_of_contents_removed INT,
+    FOREIGN KEY (admin_id) REFERENCES Admin(admin_id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE Moderator (
+    admin_id INT PRIMARY KEY,
+    no_of_forum_posts_moderated INT,
+    no_of_forum_comments_moderated INT,
+    FOREIGN KEY (admin_id) REFERENCES Admin(admin_id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB;
+ALTER TABLE manga
+ADD COLUMN CoverPath VARCHAR(255) NULL AFTER synopsis;
+INSERT INTO admin (name) VALUES ('SuperAdmin');
+ALTER TABLE users
+>>>>>>> aeccd91797046b9b6a68460ba1f970c2e86d0ab8
 ADD COLUMN Profile_pic mediumblob NULL ;
