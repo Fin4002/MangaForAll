@@ -1,32 +1,38 @@
-# app.py — unified Flask app (merged from two variants)
-# Requires: mysql-connector-python, flask, werkzeug, filetype
-# Schema (per your dump):
-#   users(user_id, username, joining_date, no_of_chapters_read, email, is_banned, ban_reason, ban_until)
+# app.py — Flask + mysql-connector-python, built to match your schema
+# Schema used (from your diagram / dump):
+#   users(user_id, username, joining_date, no_of_chapters_read, email)
 #   user_auth(user_id, password_hash, admin_id)
 #   admin(admin_id, name)
-#   manga(manga_id, publication_status, Title, Author_name, synopsis, user_id, admin_id, CoverPath)
-#   forum_posts(post_id, title, content, author, image, image_mime, user_id, admin_id, date_posted, ...)
-#   forum_comments(comment_id, content, user_id, post_id, admin_id, ...)
-#   Content_manager(admin_id)
-#   moderator(admin_id)
-from urllib.parse import urlparse
+#   manga(manga_id, publication_status, Title, Author_name, synopsis, user_id, admin_id)
+import filetype , mimetypes
 import os, re, json, urllib.parse
 from datetime import datetime, timedelta
 from functools import wraps
-
-import filetype
-import mysql.connector
-from mysql.connector import pooling
-
 from flask import (
     Flask, render_template, render_template_string, redirect, url_for,
-    request, flash, session, abort, Response
+    request, flash, session, abort
 )
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask import send_file, Response
+import mysql.connector
+from mysql.connector import pooling
+import os, time, filetype
+from flask import Flask, request, redirect, url_for, session, flash, g, abort
+from urllib.parse import urlparse
+import glob, time
+from flask import (
+    Flask, render_template, render_template_string, redirect, url_for,
+    request, flash, session, abort, Response  # ← add Response here
+)
+# or: from flask import Response, make_response
+
+import os, time
 from werkzeug.utils import secure_filename
+from flask import session, redirect, url_for, flash, request
+
 
 # ---------------------------
-# App Config
+# Config
 # ---------------------------
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-change-me')
@@ -61,6 +67,15 @@ POOL = pooling.MySQLConnectionPool(pool_name="mfa_pool", pool_size=5, **DB_CFG)
 def get_conn():
     return POOL.get_connection()
 
+def query_all(query, args=()):
+    conn = POOL.get_connection()
+    cur = conn.cursor(dictionary=True)   # <-- important
+    cur.execute(query, args)
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return rows
+
 def query_all(sql, params=()):
     with get_conn() as cnx:
         with cnx.cursor(dictionary=True) as cur:
@@ -80,6 +95,7 @@ def execute(sql, params=()):
 
 # ---------------------------
 # Paths and FS helpers
+# Paths
 # ---------------------------
 def resources_root():
     # static/Resources is the manga warehouse
@@ -149,26 +165,24 @@ def current_user():
     if not uid:
         return None
     sql = """
-        SELECT u.user_id,
-               u.username,
-               u.joining_date,
-               u.no_of_chapters_read,
-               u.email,
-               u.is_banned,
-               u.ban_reason,
-               u.ban_until,
-               ua.password_hash,
-               ua.admin_id
+        SELECT u.user_id, u.username, u.joining_date, u.no_of_chapters_read, u.email,
+               u.Profile_pic,
+               ua.password_hash, ua.admin_id
         FROM users u
         LEFT JOIN user_auth ua ON ua.user_id = u.user_id
         WHERE u.user_id = %s
     """
     return query_one(sql, (uid,))
 
+
 def is_admin(user_row):
+    # check if user_row has admin_id or not
     return bool(user_row and user_row.get('admin_id'))
 
 def is_content_manager(user_row):
+    """
+    True only if the user's admin_id is present in Content_manager.
+    """
     if not user_row or not user_row.get('admin_id'):
         return False
     row = query_one("SELECT 1 FROM Content_manager WHERE admin_id=%s", (user_row['admin_id'],))
@@ -268,6 +282,8 @@ def register():
         email = request.form['email'].strip().lower()
         pwd   = request.form['password']
 
+        # checks for existing username/email
+        # Ensure unique username/email
         dup = query_one("SELECT 1 FROM users WHERE username=%s OR email=%s", (uname, email))
         if dup:
             flash('User already exists.', 'danger')
@@ -298,6 +314,7 @@ def login():
     if request.method == 'POST':
         uname = request.form['username'].strip()
         pwd   = request.form['password']
+
         sql = """
           SELECT u.user_id, u.username, ua.password_hash, ua.admin_id
           FROM users u
@@ -321,6 +338,8 @@ def logout():
 # ---------------------------
 # Public pages
 # ---------------------------
+# Pages (public site)
+# --------------------------- 
 @app.route('/')
 def index():
     mangas = query_all("""
@@ -379,7 +398,8 @@ def manga_detail(manga_id):
     base = resources_root()
     meta = {"Author_name": "", "publication_status": "", "Title": ""}
     synopsis_text = (m.get("synopsis") or "").strip()
-
+    u=current_user()
+    favorited = is_favorited(u["user_id"], manga_id) if u else False
     if folder:
         fpath = os.path.join(base, folder)
         meta = parse_manga_txt(os.path.join(fpath, "manga.txt")) or meta
@@ -423,22 +443,67 @@ def manga_detail(manga_id):
         cover_url=cover_url,
         chapters=chapters,
         meta=meta,
+        favorited=favorited,
         user=current_user()
     )
 
 @app.route('/profile')
 @login_required
 def profile():
-    return render_template('profile.html', user=current_user())
+    u = current_user()
+    favorites = user_favorites(u["user_id"])
+    return render_template("profile.html", user=u, favorites=favorites)
 
 # ---------------------------
-# Content dashboard
+# Resources scanning helpers
 # ---------------------------
+IMAGE_EXTS = ('.jpg', '.jpeg', '.png', '.webp', '.gif')
+
+def natural_sort_keys(s):
+    #sorts manga chapter folders
+    return [int(t) if t.isdigit() else t.lower() for t in re.findall(r'\d+|\D+', s)]
+
+def parse_manga_txt(txt_path):
+    meta = {"Author_name": "Unknown", "publication_status": "unknown", "Title": None}
+    try:
+        with open(txt_path, "r", encoding="utf-8") as f:
+            line = f.readline().strip()
+        if "," in line:
+            parts = [p.strip() for p in line.split(",")]
+        else:
+            parts = [p.strip() for p in line.splitlines()]
+        while len(parts) < 3:
+            parts.append("")
+        meta["Author_name"], meta["publication_status"], meta["Title"] = parts[:3]
+    except FileNotFoundError:
+        pass
+    return meta
+
+def read_synopsis(syn_path):
+    try:
+        with open(syn_path, "r", encoding="utf-8") as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        return ""
+#checks if chapter folder is in ch format or chapter format
+def is_chapter_folder(name: str) -> bool:
+    lname = name.lower()
+    return lname.startswith("ch") or lname.startswith("chapter")
+#sorts based on the integer value ch or chapter 
+def chapter_sort_key(name: str):
+    m = re.search(r'\d+', name)
+    return int(m.group()) if m else name.casefold()
+#Accept "ch.001", "ch1", "chapter 1", "Chapter-12", etc.
+def is_chapter_folder(name: str) -> bool:
+    lname = name.lower()
+    return lname.startswith("ch") or lname.startswith("chapter")
+
 def scan_resources_content():
     base = resources_root()
     items = []
     if not os.path.isdir(base):
         return items
+
     for folder in sorted(
         [d for d in os.listdir(base) if os.path.isdir(os.path.join(base, d))],
         key=lambda s: s.lower()
@@ -662,44 +727,106 @@ def sync_from_resources_http():
         _, was_new = ensure_manga_row(folder, user)
         if was_new:
             created += 1
+
     flash(f'Scanned {scanned} folders. Created {created} manga rows.', 'success')
     return redirect(url_for('content_dashboard') if is_admin(user) else url_for('index'))
 
-# ---------------------------
-# Forum
-# ---------------------------
+
+
+#########============================######
+
+import os
+from werkzeug.utils import secure_filename
+
+UPLOAD_FOLDER = "static/uploads"
+ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
+
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
+
+dbconfig = {
+    "host": "127.0.0.1",
+    "user": "root",
+    "password": "",
+    "database": "mangaforall"
+}
+
+POOL = pooling.MySQLConnectionPool(pool_name="mypool", pool_size=5, **dbconfig)
+
+def get_all_posts():
+    conn = POOL.get_connection()
+    cur = conn.cursor(dictionary=True)
+    cur.execute("SELECT * FROM forum_posts ORDER BY date_posted DESC")
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return rows
+
+from werkzeug.utils import secure_filename
+
+# Forum: list posts
 @app.route('/forum')
 def forum():
+    # Get posts
     posts = query_all("""
-        SELECT post_id, title, content, author, image
-        FROM forum_posts
-        ORDER BY post_id DESC
-    """)
-    top_contributors = query_all("""
-        SELECT author,
-               COUNT(DISTINCT f.post_id) + COUNT(DISTINCT c.comment_id) AS total_contributions
+        SELECT
+            f.post_id,
+            f.title,
+            f.content,
+            f.image,
+            u.user_id   AS author_id,
+            u.username  AS author
         FROM forum_posts f
-        LEFT JOIN forum_comments c ON c.post_id = f.post_id
-        GROUP BY author
+        LEFT JOIN users u ON u.user_id = f.user_id
+        ORDER BY f.post_id DESC
+    """)
+
+
+    # Get Top 10 contributors (users with the most posts + comments)
+    top_contributors = query_all("""
+        SELECT u.user_id, u.username AS author, SUM(t.cnt) AS total_contributions
+        FROM (
+            SELECT user_id, COUNT(*) AS cnt
+            FROM forum_posts
+            WHERE user_id IS NOT NULL
+            GROUP BY user_id
+            UNION ALL
+            SELECT user_id, COUNT(*) AS cnt
+            FROM forum_comments
+            WHERE user_id IS NOT NULL
+            GROUP BY user_id
+        ) AS t
+        JOIN users u ON u.user_id = t.user_id
+        GROUP BY u.user_id, u.username
         ORDER BY total_contributions DESC
         LIMIT 10
     """)
+
     comments_by_post = {}
     if posts:
         ids = [p["post_id"] for p in posts]
         placeholders = ",".join(["%s"] * len(ids))
         rows = query_all(f"""
-            SELECT fc.post_id, fc.comment_id, fc.content, u.username
+            SELECT
+                fc.post_id,
+                fc.comment_id,
+                fc.content,
+                u.username,
+                u.user_id
             FROM forum_comments fc
             LEFT JOIN users u ON u.user_id = fc.user_id
             WHERE fc.post_id IN ({placeholders})
             ORDER BY fc.comment_id ASC
         """, tuple(ids))
+
+
         for r in rows:
             comments_by_post.setdefault(r["post_id"], []).append(r)
+
     return render_template("forum.html",
                            posts=posts,
                            comments_by_post=comments_by_post,
@@ -750,12 +877,20 @@ def post_detail(post_id):
     if not post:
         abort(404)
 
+    # Helper to render either full page or modal partial
     def render_partial_or_full():
         is_partial = request.args.get("partial") or request.headers.get("X-Requested-With") == "fetch"
         template = "post_detail_modal.html" if is_partial else "post_detail.html"
+
+        # Include commenter user_id so we can render their avatars
         comments = query_all(
             """
-            SELECT fc.comment_id, fc.content, fc.post_id, u.username
+            SELECT
+                fc.comment_id,
+                fc.content,
+                fc.post_id,
+                u.username,
+                u.user_id
             FROM forum_comments fc
             LEFT JOIN users u ON u.user_id = fc.user_id
             WHERE fc.post_id = %s
@@ -763,6 +898,7 @@ def post_detail(post_id):
             """,
             (post_id,)
         )
+
         return render_template(template, post=post, comments=comments, user=current_user())
 
     if request.method == "POST":
@@ -789,18 +925,35 @@ def post_detail(post_id):
             "INSERT INTO forum_comments (content, user_id, post_id, admin_id) VALUES (%s, %s, %s, %s)",
             (content, u["user_id"], post_id, u["admin_id"] if is_admin(u) else None)
         )
+
+        # If this was an Ajax/modal submit, return the updated partial
         if request.args.get("partial") or request.headers.get("X-Requested-With") == "fetch":
             return render_partial_or_full()
+
+        # Normal full-page POST → redirect
         return redirect(url_for("post_detail", post_id=post_id))
 
+    # GET: render appropriate template
     return render_partial_or_full()
+
+
+
 
 @app.route("/post_image/<int:post_id>", endpoint="post_image_blob")
 def post_image(post_id):
-    row = query_one("SELECT image, image_mime FROM forum_posts WHERE post_id=%s", (post_id,))
+    row = query_one(
+        "SELECT image, image_mime FROM forum_posts WHERE post_id=%s",
+        (post_id,),
+    )
     if not row or not row.get("image"):
         abort(404)
-    mime = row.get("image_mime") or filetype.guess_mime(row["image"]) or "image/jpeg"
+
+    # Prefer stored mime if present
+    mime = row.get("image_mime")
+    if not mime:
+        # Detect from raw bytes; falls back to JPEG if unknown
+        mime = filetype.guess_mime(row["image"]) or "image/jpeg"
+
     return Response(row["image"], mimetype=mime)
 
 @app.route('/add_comment/<int:post_id>', methods=['POST'])
@@ -814,6 +967,7 @@ def add_comment(post_id):
     if not content:
         flash("Comment cannot be empty.", "warning")
         return redirect(url_for('forum'))
+
     execute(
         "INSERT INTO forum_comments (content, user_id, post_id, admin_id) VALUES (%s, %s, %s, %s)",
         (content, user["user_id"], post_id, user["admin_id"] if is_admin(user) else None)
@@ -875,6 +1029,180 @@ def mod_delete_post(post_id):
     execute("DELETE FROM forum_posts WHERE post_id=%s", (post_id,))
     flash("Post deleted.", "success")
     return _safe_redirect(request.form.get("next"), url_for("forum"))
+
+#########============================######
+
+
+# --- Avatar upload (uses your existing pool + helpers) ---
+
+AVATAR_FOLDER = os.path.join(app.static_folder, "avatars")
+os.makedirs(AVATAR_FOLDER, exist_ok=True)
+ALLOWED_AVATAR_EXTS = {"png", "jpg", "jpeg", "gif", "webp"}
+
+def _allowed_avatar(filename: str) -> bool:
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_AVATAR_EXTS
+
+@app.post("/profile/avatar")
+@login_required
+def upload_avatar():
+    file = request.files.get("avatar")
+    if not file or not file.filename:
+        flash("No file selected.", "warning")
+        return redirect(url_for("profile"))
+
+    if not _allowed_avatar(file.filename):
+        flash("Unsupported image type. Use PNG/JPG/GIF/WEBP.", "danger")
+        return redirect(url_for("profile"))
+
+    u = current_user()
+    uid = u["user_id"]
+
+    # remove any previous avatar files (any extension)
+    for old in glob.glob(os.path.join(AVATAR_FOLDER, f"user_{uid}.*")):
+        try: os.remove(old)
+        except OSError: pass
+
+    ts  = int(time.time())
+    ext = file.filename.rsplit(".", 1)[1].lower()
+    fname = f"user_{uid}_{ts}.{ext}"
+    save_fs = os.path.join(AVATAR_FOLDER, fname)
+    file.save(save_fs)
+
+    # store RELATIVE path ONLY (relative to /static)
+    rel_path = f"avatars/{fname}"
+
+    # write to DB using your helper (same pool)
+    execute("UPDATE users SET Profile_pic=%s WHERE user_id=%s", (rel_path, uid))
+
+    # cache-bust for the template
+    session["avatar_ver"] = ts
+
+    flash("Profile picture updated!", "success")
+    return redirect(url_for("profile"))
+
+
+# ...
+
+
+@app.get("/u/<int:uid>/avatar", endpoint="user_avatar")
+def user_avatar(uid: int):
+    """
+    Serve a user's avatar supporting three storage styles:
+    1) users.Profile_pic is IMAGE BYTES (BLOB of the actual image)
+    2) users.Profile_pic is BYTES of a PATH STRING (BLOB containing e.g. b'avatars/user_1_123.jpg')
+    3) users.Profile_pic is a STRING path ('avatars/user_1_123.jpg')
+    """
+    row = query_one("SELECT username, Profile_pic FROM users WHERE user_id=%s", (uid,))
+    username = (row.get("username") if row else "U") or "U"
+    pic = row.get("Profile_pic") if row else None
+
+    def serve_file(fs_path):
+        if os.path.isfile(fs_path):
+            mt = mimetypes.guess_type(fs_path)[0] or "image/jpeg"
+            resp = send_file(fs_path, mimetype=mt, conditional=True)
+            resp.headers["Cache-Control"] = "no-store"
+            return resp
+        return None
+
+    # ---- Case A: pic is bytes (BLOB) ----
+    if isinstance(pic, (bytes, bytearray)) and pic:
+        data = bytes(pic)
+
+        # If these bytes look like an actual image, serve them directly.
+        # filetype.guess returns None for plain text/path bytes.
+        if filetype.guess(data) or filetype.guess_mime(data):
+            resp = Response(data, mimetype=(filetype.guess_mime(data) or "image/jpeg"))
+            resp.headers["Cache-Control"] = "no-store"
+            return resp
+
+        # Otherwise try to interpret the bytes as a UTF-8 path string
+        try:
+            path_str = data.decode("utf-8", errors="strict").strip().strip("\x00").strip("'").strip('"')
+        except Exception:
+            path_str = None
+
+        if path_str:
+            # Allow either 'avatars/...' or 'static/avatars/...'
+            fs_path = (
+                os.path.join(app.static_folder, path_str.replace("/", os.sep))
+                if not path_str.startswith("static/")
+                else os.path.join(app.root_path, path_str.replace("/", os.sep))
+            )
+            served = serve_file(fs_path)
+            if served:
+                return served
+        # If decode/path check fails, fall through to default.
+
+    # ---- Case B: pic is a normal string path ----
+    if isinstance(pic, str) and pic:
+        path_str = pic.strip().strip("\x00").strip("'").strip('"')
+        fs_path = (
+            os.path.join(app.static_folder, path_str.replace("/", os.sep))
+            if not path_str.startswith("static/")
+            else os.path.join(app.root_path, path_str.replace("/", os.sep))
+        )
+        served = serve_file(fs_path)
+        if served:
+            return served
+
+    # ---- Default file fallback ----
+    default_fs = os.path.join(app.static_folder, "avatars", "default.png")
+    served = serve_file(default_fs)
+    if served:
+        return served
+
+    # ---- Final inline SVG fallback (never fails) ----
+    initial = (username[:1] or "U").upper()
+    svg = f"""<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'>
+      <defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'>
+        <stop offset='0%' stop-color='#22d3ee'/><stop offset='100%' stop-color='#0891b2'/>
+      </linearGradient></defs>
+      <circle cx='48' cy='48' r='46' fill='url(#g)'/>
+      <text x='50%' y='56%' text-anchor='middle' font-family='Arial,Helvetica,sans-serif'
+            font-size='36' fill='#001018' font-weight='900'>{initial}</text>
+    </svg>"""
+    resp = Response(svg, mimetype="image/svg+xml")
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+
+#########============================######
+
+# --- Wishlist helpers ---
+
+def is_favorited(user_id, manga_id):
+    row = query_one("SELECT 1 FROM wishlist WHERE user_id=%s AND manga_id=%s", (user_id, manga_id))
+    return bool(row)
+
+def user_favorites(user_id):
+    return query_all("""
+        SELECT m.manga_id, m.Title, m.Author_name, m.CoverPath
+        FROM wishlist w
+        JOIN manga m ON m.manga_id = w.manga_id
+        WHERE w.user_id=%s
+        ORDER BY w.added_at DESC
+    """, (user_id,))
+
+
+@app.post("/wishlist/<int:manga_id>/toggle")
+@login_required
+def wishlist_toggle(manga_id):
+    u = current_user()
+    if not query_one("SELECT manga_id FROM manga WHERE manga_id=%s", (manga_id,)):
+        abort(404)
+
+    existing = query_one("SELECT wishlist_id FROM wishlist WHERE user_id=%s AND manga_id=%s",
+                         (u["user_id"], manga_id))
+    if existing:
+        execute("DELETE FROM wishlist WHERE wishlist_id=%s", (existing["wishlist_id"],))
+    else:
+        execute("INSERT INTO wishlist (user_id, manga_id, added_at) VALUES (%s, %s, NOW())",
+                (u["user_id"], manga_id))
+
+    return redirect(url_for("manga_detail", manga_id=manga_id))
+
+
+
 
 # ---------------------------
 # Entrypoint

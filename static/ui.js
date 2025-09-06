@@ -442,3 +442,15 @@
 
   console.log('[popout] ready');
 })();
+// Avatar click-to-upload
+(function () {
+  document.querySelectorAll('[data-avatar-form]:not([data-noglobal])').forEach((form) => {
+    const trigger = form.querySelector('[data-avatar-trigger]');
+    const input = form.querySelector('[data-avatar-input]');
+    if (!trigger || !input) return;
+    trigger.addEventListener('click', () => input.click());
+    input.addEventListener('change', () => {
+      if (input.files && input.files[0]) form.submit();
+    });
+  });
+})();

@@ -9,7 +9,13 @@
       <ul class="contributors">
         {% for c in top_contributors %}
           <li class="contrib">
-            <div class="avatar small">{{ (c.author or 'A')[:1] }}</div>
+            {% if c.user_id %}
+              <img class="avatar small"
+                   src="{{ url_for('user_avatar', uid=c.user_id) }}?v={{ session.get('avatar_ver', 0) }}"
+                   alt="{{ c.author or 'User' }}">
+            {% else %}
+              <div class="avatar small">{{ (c.author or 'A')[:1] }}</div>
+            {% endif %}
             <div class="who">
               <div class="name">{{ c.author or 'Anonymous' }}</div>
               <div class="muted">{{ c.total_contributions }} contributions</div>
@@ -28,10 +34,16 @@
       <div class="stack">
         {% for post in posts %}
           <article class="post card fade-in">
-            <!-- Clickable area (header + body + footer) -->
             <div class="post-click">
               <header class="post-header">
-                <div class="avatar">{{ (post.author or 'A')[:1] }}</div>
+                {% set poster_uid = post.author_id or post.user_id %}
+                {% if poster_uid %}
+                  <img class="avatar small"
+                       src="{{ url_for('user_avatar', uid=poster_uid) }}?v={{ session.get('avatar_ver', 0) }}"
+                       alt="{{ post.author or 'User' }}">
+                {% else %}
+                  <div class="avatar small">{{ (post.author or 'A')[:1] }}</div>
+                {% endif %}
                 <div class="meta">
                   <div class="name">{{ post.author or 'Anonymous' }}</div>
                   <div class="muted">Post #{{ post.post_id }}</div>
@@ -52,14 +64,13 @@
                 <div class="chips"><span class="chip">Discussion</span></div>
               </footer>
 
-              <!-- Overlay link: opens modal via JS, falls back to full page without JS -->
+              <!-- Opens modal -->
               <a class="post-link"
                  href="{{ url_for('post_detail', post_id=post.post_id) }}"
                  data-modal="post"
                  aria-label="Open post: {{ post.title }}"></a>
             </div>
 
-            <!-- Comments stay outside the clickable area -->
             <section class="comments">
               <h4 class="comments-title">Comments</h4>
               {% set c_list = comments_by_post.get(post.post_id, []) %}
@@ -67,7 +78,13 @@
                 <ul class="comment-list">
                   {% for c in c_list %}
                     <li class="comment">
-                      <div class="avatar tiny">{{ (c.username or 'A')[:1] }}</div>
+                      {% if c.user_id %}
+                        <img class="avatar tiny"
+                             src="{{ url_for('user_avatar', uid=c.user_id) }}?v={{ session.get('avatar_ver', 0) }}"
+                             alt="{{ c.username or 'User' }}">
+                      {% else %}
+                        <div class="avatar tiny">{{ (c.username or 'A')[:1] }}</div>
+                      {% endif %}
                       <div class="bubble">
                         <div class="who">{{ c.username or 'Anonymous' }}</div>
                         <p>{{ c.content }}</p>
