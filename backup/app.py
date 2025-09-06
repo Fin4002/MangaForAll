@@ -247,51 +247,51 @@ def manga_list():
 
 #work in progress
 @app.route('/manga/<int:manga_id>')
-@app.route('/manga/<int:manga_id>')
 def manga_detail(manga_id):
-    # Fetch from DB first
-    m = query_one("SELECT * FROM manga WHERE manga_id=%s", (manga_id,))
-    if not m:
+    # 1) Fetch clean fields from DB (no NULL, no stray spaces)
+    row = query_one("""
+        SELECT
+          COALESCE(NULLIF(TRIM(Title), ''), '')            AS Title,
+          COALESCE(NULLIF(TRIM(Author_name), ''), '')      AS Author_name,
+          COALESCE(publication_status, '')                 AS publication_status,
+          COALESCE(CoverPath, '')                          AS CoverPath,
+          manga_id
+        FROM manga
+        WHERE manga_id = %s
+    """, (manga_id,))
+    if not row:
         abort(404)
 
-    db_title  = (m.get('Title') or '').strip()
-    db_author = (m.get('Author_name') or '').strip()
-    coverpath = (m.get('CoverPath') or '').strip()
+    db_title  = row['Title']
+    db_author = row['Author_name']
+    coverpath = row['CoverPath']
 
-    # Infer folder from CoverPath or Title
+    # 2) Infer folder (prefer CoverPath Resources/<folder>/Cover.jpg)
     folder = None
     if coverpath.startswith("Resources/"):
         parts = coverpath.split("/")
         if len(parts) >= 2 and parts[1]:
             folder = parts[1]
-    if not folder and db_title:
-        base = resources_root()
-        if os.path.isdir(base):
-            for d in os.listdir(base):
-                if os.path.isdir(os.path.join(base, d)) and d.lower() == db_title.lower():
-                    folder = d
-                    break
 
+    # Fallback: match folder by Title
     base = resources_root()
+    if not folder and db_title and os.path.isdir(base):
+        for d in os.listdir(base):
+            if os.path.isdir(os.path.join(base, d)) and d.lower() == db_title.lower():
+                folder = d
+                break
+
+    # 3) Get meta from manga.txt if we found a folder
     meta = {"Author_name": "", "publication_status": "", "Title": ""}
-    synopsis_text = (m.get("synopsis") or "").strip()
-
     if folder:
-        fpath = os.path.join(base, folder)
-        # parse manga.txt for extra info
-        meta = parse_manga_txt(os.path.join(fpath, "manga.txt")) or meta
-        # If DB synopsis is missing, try synopsis.txt
-        if not synopsis_text:
-            syn_path = os.path.join(fpath, "synopsis.txt")
-            if os.path.isfile(syn_path):
-                synopsis_text = read_synopsis(syn_path)
+        meta = parse_manga_txt(os.path.join(base, folder, "manga.txt")) or meta
 
-    # Final values
-    title_final  = db_title or meta.get("Title") or folder or "Untitled"
-    author_final = db_author or meta.get("Author_name") or "Unknown"
-    status_final = m.get("publication_status") or meta.get("publication_status") or "unknown"
+    # 4) Final values: DB first, then meta, then folder name
+    title_final  = db_title or (meta.get("Title") or "").strip() or (folder or "Untitled")
+    author_final = db_author or (meta.get("Author_name") or "").strip() or "Unknown"
+    status_final = (row.get("publication_status") or meta.get("publication_status") or "unknown").strip()
 
-    # Cover
+    # 5) Cover URL: Resources if exists, else DB CoverPath
     cover_url = None
     if folder:
         cover_fs = os.path.join(base, folder, "Cover.jpg")
@@ -300,7 +300,7 @@ def manga_detail(manga_id):
     if not cover_url and coverpath:
         cover_url = f"/static/{coverpath}"
 
-    # Chapters
+    # 6) Chapters
     chapters = []
     if folder:
         fpath = os.path.join(base, folder)
@@ -311,15 +311,14 @@ def manga_detail(manga_id):
             ]
             chapters.sort(key=chapter_sort_key)
 
-    # Pass a clean dict to the template
-    manga_ctx = dict(m)
+    # 7) Pass a clean, dependable dict to the template
+    manga_ctx = dict(row)
     manga_ctx["Title"] = title_final
     manga_ctx["Author_name"] = author_final
     manga_ctx["publication_status"] = status_final
-    manga_ctx["synopsis"] = synopsis_text
 
     return render_template(
-        "manga_detail.html",
+        'manga_detail.html',
         manga=manga_ctx,
         folder=folder,
         cover_url=cover_url,
@@ -327,7 +326,6 @@ def manga_detail(manga_id):
         meta=meta,
         user=current_user()
     )
-
 
 
 

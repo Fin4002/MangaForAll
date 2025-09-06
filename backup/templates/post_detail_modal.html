@@ -1,0 +1,49 @@
+{# templates/post_detail_modal.html #}
+<div class="pd-modal">
+  <header class="pd-head">
+    <div class="avatar">{{ (post.author or 'A')[:1] }}</div>
+    <div>
+      <div class="pd-name">{{ post.author or 'Anonymous' }}</div>
+      <div class="pd-sub">Post #{{ post.post_id }}</div>
+    </div>
+  </header>
+
+  {% if post.image %}
+    <figure class="pd-media">
+      <img src="{{ url_for('post_image_blob', post_id=post.post_id) }}" alt="Post image">
+    </figure>
+  {% endif %}
+
+  {% if post.content %}
+    <p class="pd-text">{{ post.content }}</p>
+  {% endif %}
+
+  <h3>Comments</h3>
+  {% if comments and comments|length %}
+    <ul class="pd-comment-list">
+      {% for c in comments %}
+        <li class="pd-comment">
+          <div class="avatar tiny">{{ (c.username or 'A')[:1] }}</div>
+          <div class="pd-bubble">
+            <div class="pd-who">{{ c.username or 'Anonymous' }}</div>
+            <p>{{ c.content }}</p>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="card-sub">No comments yet.</p>
+  {% endif %}
+
+  {% if user %}
+    <form method="POST"
+          action="{{ url_for('post_detail', post_id=post.post_id) }}?partial=1"
+          class="pd-form"
+          data-ajax>
+      <textarea name="content" class="input" rows="3" placeholder="Write a comment…" required></textarea>
+      <button class="btn" type="submit">Comment</button>
+    </form>
+  {% else %}
+    <p class="card-sub">Please <a href="{{ url_for('login') }}">log in</a> to comment.</p>
+  {% endif %}
+</div>

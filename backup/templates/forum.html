@@ -1,33 +1,106 @@
 {% extends 'base.html' %}
-{% block title %}Forum{% endblock %}
+{% block title %}Forum · MangaForAll{% endblock %}
 {% block content %}
-  <div class="grid grid-2">
-    <div class="card fade-in">
-      <div class="card-header">
-        <div class="card-title">Create Topic</div>
-      </div>
-      <form class="form">
-        <label class="label">Title</label>
-        <input class="input" placeholder="Keep it relevant. Try.">
-        <label class="label">Content</label>
-        <textarea class="input" rows="5" placeholder="Say something useful. Or at least coherent."></textarea>
-        <button class="btn" type="button">Post</button>
-      </form>
-    </div>
 
-    <div class="card fade-in">
-      <div class="card-header">
-        <div class="card-title">Latest Topics</div>
-      </div>
-      <table class="table">
-        <thead>
-          <tr><th>Title</th><th>Author</th><th>Replies</th></tr>
-        </thead>
-        <tbody>
-          <tr><td>Welcome to MintForum</td><td>admin</td><td>5</td></tr>
-          <tr><td>Rules & Etiquette</td><td>moderator</td><td>2</td></tr>
-        </tbody>
-      </table>
+<div class="forum-layout">
+  <aside class="forum-aside card fade-in">
+    <div class="card-body">
+      <h2 class="card-title">Top Contributors</h2>
+      <ul class="contributors">
+        {% for c in top_contributors %}
+          <li class="contrib">
+            <div class="avatar small">{{ (c.author or 'A')[:1] }}</div>
+            <div class="who">
+              <div class="name">{{ c.author or 'Anonymous' }}</div>
+              <div class="muted">{{ c.total_contributions }} contributions</div>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+      <a href="{{ url_for('new_post') }}" class="btn block" style="margin-top:12px">New Post</a>
     </div>
-  </div>
+  </aside>
+
+  <main class="forum-main">
+    <h1 class="page-title">Forum</h1>
+
+    {% if posts %}
+      <div class="stack">
+        {% for post in posts %}
+          <article class="post card fade-in">
+            <!-- Clickable area (header + body + footer) -->
+            <div class="post-click">
+              <header class="post-header">
+                <div class="avatar">{{ (post.author or 'A')[:1] }}</div>
+                <div class="meta">
+                  <div class="name">{{ post.author or 'Anonymous' }}</div>
+                  <div class="muted">Post #{{ post.post_id }}</div>
+                </div>
+              </header>
+
+              <div class="post-body">
+                <h3 class="post-title">{{ post.title }}</h3>
+                <p class="post-text">{{ post.content }}</p>
+                {% if post.image %}
+                  <figure class="media">
+                    <img src="{{ url_for('post_image_blob', post_id=post.post_id) }}" alt="Post image">
+                  </figure>
+                {% endif %}
+              </div>
+
+              <footer class="post-footer">
+                <div class="chips"><span class="chip">Discussion</span></div>
+              </footer>
+
+              <!-- Overlay link: opens modal via JS, falls back to full page without JS -->
+              <a class="post-link"
+                 href="{{ url_for('post_detail', post_id=post.post_id) }}"
+                 data-modal="post"
+                 aria-label="Open post: {{ post.title }}"></a>
+            </div>
+
+            <!-- Comments stay outside the clickable area -->
+            <section class="comments">
+              <h4 class="comments-title">Comments</h4>
+              {% set c_list = comments_by_post.get(post.post_id, []) %}
+              {% if c_list %}
+                <ul class="comment-list">
+                  {% for c in c_list %}
+                    <li class="comment">
+                      <div class="avatar tiny">{{ (c.username or 'A')[:1] }}</div>
+                      <div class="bubble">
+                        <div class="who">{{ c.username or 'Anonymous' }}</div>
+                        <p>{{ c.content }}</p>
+                      </div>
+                    </li>
+                  {% endfor %}
+                </ul>
+              {% else %}
+                <p class="muted">No comments yet.</p>
+              {% endif %}
+
+              {% if user %}
+                <form method="POST" action="{{ url_for('add_comment', post_id=post.post_id) }}" class="comment-form">
+                  <textarea name="content" class="input" rows="2" placeholder="Write a comment…" required></textarea>
+                  <button type="submit" class="btn">Comment</button>
+                </form>
+              {% else %}
+                <p class="muted">Please <a href="{{ url_for('login') }}">log in</a> to comment.</p>
+              {% endif %}
+            </section>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="card fade-in">
+        <div class="card-body center">
+          <h3 class="card-title" style="margin-bottom:6px">No posts yet</h3>
+          <p class="card-sub">Start the chaos politely.</p>
+          <a href="{{ url_for('new_post') }}" class="btn">Create the first post</a>
+        </div>
+      </div>
+    {% endif %}
+  </main>
+</div>
+
 {% endblock %}

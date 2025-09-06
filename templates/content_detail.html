@@ -4,20 +4,30 @@
 {% block content %}
   <h1 class="page-title center">{{ title }}</h1>
 
+  <!-- Top actions -->
+  <div class="row" style="justify-content:center; gap:10px; margin-bottom:12px">
+    <a class="btn outline" href="{{ url_for('content_dashboard') }}">← Back to Content</a>
+    {% if chapters %}
+      <a class="btn outline" href="#chapters">Jump to Chapters</a>
+    {% endif %}
+  </div>
+
   <div class="grid detail-grid">
-    <!-- Left: cover + meta + approve -->
+    <!-- Left: cover + meta + actions -->
     <div class="card fade-in">
       {% if cover_url %}
         <div class="cover fill" style="background-image:url('{{ cover_url }}')"></div>
       {% else %}
-        <div class="card-sub" style="padding:10px 0">No <code>Cover.jpg</code> found</div>
+        <div class="card-sub center" style="padding:12px 0">No <code>Cover.jpg</code> found</div>
       {% endif %}
 
       <div class="space"></div>
+
       <div class="row" style="justify-content:space-between">
         <span class="card-sub">Author</span>
         <strong>{{ meta.Author_name or 'Unknown' }}</strong>
       </div>
+
       <div class="row" style="justify-content:space-between">
         <span class="card-sub">Status</span>
         {% set st = (meta.publication_status or 'unknown')|lower %}
@@ -31,49 +41,66 @@
       </div>
 
       <div class="space"></div>
-      {% if approved %}
-        <span class="btn outline">Already approved</span>
-      {% else %}
-        <form method="post" action="{{ url_for('content_approve', folder=folder) }}">
-          <button type="submit" class="btn">Approve & Save to DB</button>
+
+      <div class="row" style="gap:10px; flex-wrap:wrap">
+        {% if approved %}
+          <span class="btn outline">Already approved</span>
+        {% else %}
+          <form method="post" action="{{ url_for('content_approve', folder=folder) }}">
+            <button type="submit" class="btn">Approve & Save to DB</button>
+          </form>
+        {% endif %}
+
+        {# Remove only removes DB row (not files), per your latest requirement #}
+        <form method="post" action="{{ url_for('content_remove', folder=folder) }}">
+          <button type="submit" class="btn danger"
+                  onclick="return confirm('Remove this manga from the DATABASE only? Files in static/Resources remain.')">
+            Remove
+          </button>
         </form>
-      {% endif %}
+      </div>
     </div>
 
     <!-- Right: synopsis + chapters -->
     <div class="card fade-in">
       {% if synopsis %}
-        <div class="card-header">
+        <div class="card-header centered">
           <div class="card-title">Synopsis</div>
         </div>
-        <p class="card-sub">{{ synopsis }}</p>
+        <p class="synopsis center" style="max-width:70ch; margin-inline:auto">{{ synopsis }}</p>
         <div class="space"></div>
       {% endif %}
 
-      <div class="card-header">
+      <div class="card-header" id="chapters" style="align-items:center">
         <div class="card-title">Chapters</div>
-        {% if chapters %}
-          <span class="badge ok">{{ chapters|length }} found</span>
-        {% endif %}
+        <span class="right">
+          {% if chapters %}
+            <span class="badge ok">{{ chapters|length }} found</span>
+            {% if my_reads and my_reads > 0 %}
+              <span class="badge">{{ my_reads }} read by you</span>
+            {% endif %}
+          {% endif %}
+        </span>
       </div>
 
       {% if chapters and chapters|length > 0 %}
         <table class="table">
-          <thead>
-            <tr><th>Chapter</th></tr>
-          </thead>
-          <tbody>
-            {% for ch in chapters %}
-              <tr class="chapter-row" onclick="window.location='{{ url_for('reader', folder=folder, chapter=ch) }}'">
-                <td>{{ ch }}</td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+        <tbody>
+          {% for ch in chapters %}
+            <tr class="chapter-row"
+                onclick="window.location='{{ url_for('reader', folder=folder, chapter=ch, back=request.path) }}'">
+              <td>
+                <div class="row" style="gap:10px; align-items:center">
+                  <span class="badge warn">#{{ loop.index }}</span>
+                  <strong>{{ ch }}</strong>
+                </div>
+              </td>
+            </tr>
+      {% endfor %}
+  </tbody>
+</table>
       {% else %}
-        <div class="alert warn">
-          No chapter folders found. Use names like <code>ch.000</code> or <code>chapter 1</code>.
-        </div>
+        <div class="alert warn center">No chapter folders found. Use names like <code>ch.000</code> or <code>chapter 1</code>.</div>
       {% endif %}
     </div>
   </div>

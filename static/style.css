@@ -173,6 +173,15 @@ body{
 .btn.ghost:hover {
   background: rgba(56, 139, 253, 0.1);
 }
+.btn.danger {
+  background: var(--danger);
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(239,68,68,.35);
+}
+.btn.danger:hover {
+  background: #dc2626;
+}
+
 
 /* ---------- Forms ---------- */
 .form{ display:grid; gap:14px; }
@@ -303,10 +312,29 @@ a {
 }
 /* make synopsis easier to read */
 .synopsis {
-  font-size: 1rem;
-  line-height: 1.55;
+  font-size: 1.1rem;
+  line-height: 1.7;
   color: var(--text);
-  margin: 0;
+  max-width: 85ch;
+  margin: 0 auto;
+  text-align: justify;
+  padding: 16px 20px;
+  background: color-mix(in oklab, var(--text), transparent 94%);
+  border-radius: 12px;
+}
+
+
+/* Slightly tighter on very small screens */
+@media (max-width: 680px){
+  .synopsis{
+    max-width: 62ch;
+    line-height: 1.58;
+  }
+}
+
+/* If you ever want wider copy for short blurbs, add this class too */
+.synopsis.wide{
+  max-width: 90ch;
 }
 .cover.fill {
   background-size: cover;  /* make cover fill box instead of letterbox */
@@ -327,35 +355,54 @@ a {
   padding: 14px 16px;
 }
 /* Hero header with blurred cover background */
-.hero {
+/* HERO: clamp image inside, layer cleanly, fade to page bg */
+.hero{
+  height: 320px;
   position: relative;
   border-radius: var(--radius);
   overflow: hidden;
   padding: 18px 22px;
   border: 1px solid color-mix(in oklab, var(--text), transparent 92%);
-  background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,0));
+  background: color-mix(in oklab, var(--bg), black 4%);                 /* solid base so nothing shows through */
   box-shadow: var(--shadow);
+  isolation: isolate;                    /* keep pseudo layers contained */
 }
-.hero::before {
+
+/* blurred cover layer */
+.hero::before{
   content: "";
-  position: absolute; inset: -20px;
+  position: absolute;
+  inset: -20px;                          /* overpaint edges, still clipped by overflow */
   background: var(--hero) center / cover no-repeat;
   filter: blur(22px) saturate(.85) brightness(.6) grayscale(.2);
   transform: scale(1.1);
   opacity: .6;
+  z-index: 0;
 }
-.hero::after {
-  /* vignette so text is readable */
+
+/* bottom fade to page background — actually positioned this time */
+.hero::after{
   content: "";
-  position: absolute; inset: 0;
+  position: absolute;                    /* <-- you forgot this */
+  left: 0; right: 0; bottom: -1px;
+  height: 56px;
   background:
     radial-gradient(120% 100% at 10% 10%, rgba(0,0,0,.45), transparent 60%),
-    linear-gradient(180deg, rgba(0,0,0,.35), rgba(0,0,0,.15));
+    linear-gradient(to bottom, rgba(0,0,0,0), var(--bg));
+  pointer-events: none;
+  z-index: 1;
 }
-.hero-inner { position: relative; display: flex; gap: 18px; align-items: flex-end; }
+
+.hero-inner{
+  position: relative;
+  display: flex;
+  gap: 18px;
+  align-items: flex-end;
+  z-index: 2;                            /* above ::before/::after */
+}
 
 /* small cover used inside the hero */
-.cover-hero {
+.cover-hero{
   width: 170px; flex: 0 0 170px;
   aspect-ratio: 2 / 3;
   background: center / cover no-repeat #0b0f14;
@@ -364,14 +411,15 @@ a {
 }
 
 /* big title over the hero */
-.hero-title {
+.hero-title{
   margin: 0;
   font-size: clamp(1.8rem, 4vw + .5rem, 3rem);
   line-height: 1.15;
   font-weight: 800;
 }
-.hero-meta { display: flex; gap: 10px; flex-wrap: wrap; }
-.hero-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+.hero-meta{ display:flex; gap:10px; flex-wrap:wrap }
+.hero-actions{ display:flex; gap:10px; flex-wrap:wrap; margin-top:8px }
+
 
 /* ===== Forum layout & aside ===== */
 .forum-layout{ display:grid; grid-template-columns: 280px 1fr; gap:22px }
@@ -555,4 +603,147 @@ body{ font-size: 16.5px; }
 .comment-form .input,
 .pd-form .input{
   min-height: 48px;  /* easier to type */
+}
+/* Profile stats */
+.stats-grid{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap:12px;
+}
+.stat{
+  background: color-mix(in oklab, var(--text), transparent 96%);
+  border:1px solid color-mix(in oklab, var(--text), transparent 90%);
+  border-radius: var(--radius-sm);
+  padding:14px;
+  text-align:center;
+}
+.stat-num{
+  font-weight:800;
+  font-size:1.4rem;
+}
+.stat-label{
+  margin-top:2px;
+  color:var(--muted);
+  font-size:.85rem;
+}
+.detail-grid { grid-template-columns: 320px 1fr; align-items: start; }
+.cover.fill { background-size: cover; }
+.card-header.centered { justify-content: center; text-align: center; }
+.synopsis { font-size: 1rem; line-height: 1.55; color: var(--text); }
+.chapter-row { cursor: pointer; transition: background .18s ease, transform .08s ease; }
+.chapter-row:hover { background: color-mix(in oklab, var(--brand), transparent 92%); }
+.chapter-row:active { transform: scale(.997); }
+.btn.danger { background: var(--danger); color: #fff; box-shadow: 0 6px 16px rgba(239,68,68,.35); }
+.btn.danger:hover { background: #dc2626; }
+.table thead { 
+  display: none; 
+}
+.modal.is-open{ display: flex; }
+
+.modal-backdrop{
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(100% 100% at 20% 0%, rgba(34,211,238,.08), transparent 40%),
+    rgba(0,0,0,.55);
+  backdrop-filter: blur(6px);
+}
+
+.modal-card{
+  position: relative; z-index: 1;
+  width: min(560px, 92vw);
+  background: var(--card);
+  border: 1px solid color-mix(in oklab, var(--text), transparent 90%);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+  padding: 18px;
+  animation: modal-pop .18s ease-out both;
+}
+@keyframes modal-pop{ from{ opacity:0; transform: translateY(8px) scale(.98) } to{ opacity:1; transform:none } }
+
+.modal-header{
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
+.modal-title{ margin:0; font-weight:800; font-size:1.25rem; }
+
+.modal-footer{
+  display:flex; gap:10px; justify-content:flex-end; margin-top: 2px;
+}
+
+/* Custom file input that matches buttons */
+.file-input{
+  display:inline-flex; align-items:center; gap:10px;
+  padding:10px 12px; border-radius:12px; cursor:pointer;
+  border:1px dashed color-mix(in oklab, var(--text), transparent 75%);
+  color:var(--muted);
+}
+.file-input input[type=file]{ display:none }
+.file-input:hover{
+  background: color-mix(in oklab, var(--text), transparent 95%);
+}
+
+/* Text areas should be taller and comfy inside modals */
+textarea.input{ min-height: 140px; resize: vertical; }
+.card.fade-in {
+  background: var(--card);   /* opaque card background */
+}
+#chapter-controls { position: sticky; bottom: 0; background: var(--bg); }
+/* Layout wrapper inside hero */
+.hero-body{ flex:1; min-width:0; }
+
+/* Title (left) + Author (right) on one row */
+.hero-head{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:16px;
+  margin-bottom:8px;
+}
+
+/* Keep long titles from smashing the author */
+.hero-title{
+  flex:1 1 auto;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+/* Author on the far right */
+.hero-author{
+  flex:0 0 auto;
+  display:flex;
+  align-items:baseline;
+  gap:6px;
+  color: var(--muted);
+  font-weight:600;
+}
+
+/* Slight emphasis on the author name */
+.hero-author strong{
+  color: var(--text);
+  font-weight:700;
+}
+
+/* Badge + actions row */
+.hero-meta{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  flex-wrap:wrap;
+}
+
+/* Responsive: stack title/author on small screens */
+@media (max-width: 720px){
+  .hero-head{
+    flex-direction:column;
+    align-items:flex-start;
+    gap:4px;
+  }
+  .hero-title{
+    white-space:normal;   /* allow wrapping on phones */
+  }
+  .hero-author{
+    order:2;
+  }
 }

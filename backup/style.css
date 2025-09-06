@@ -1,124 +1,169 @@
-/* General Reset */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: "Segoe UI", Arial, sans-serif;
+
+/* ===============================
+   Mint UI — clean, modern, responsive
+   Drop-in replacement for your current style.css
+   =============================== */
+
+/* ---------- CSS Variables ---------- */
+:root{
+  --bg: #0b0f17;
+  --bg-elev: #101827;
+  --card: #111827;
+  --muted: #6b7280;
+  --text: #e5e7eb;
+  --brand: #22d3ee;
+  --brand-600: #06b6d4;
+  --brand-700: #0891b2;
+  --danger: #ef4444;
+  --warn: #f59e0b;
+  --ok: #10b981;
+  --ring: rgba(34,211,238,.45);
+  --shadow: 0 10px 30px rgba(0,0,0,.35);
+  --radius: 16px;
+  --radius-sm: 12px;
+  --radius-xs: 10px;
+  --gap: 20px;
+  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Inter, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji";
 }
 
-body {
-  background: #0d1117;       /* dark background */
-  color: #c9d1d9;           /* light gray text */
+@media (prefers-color-scheme: light){
+  :root{
+    --bg: #f7fafc;
+    --bg-elev: #ffffff;
+    --card: #ffffff;
+    --text: #0b1220;
+    --muted: #4b5563;
+    --shadow: 0 10px 24px rgba(2,6,23,.10);
+    --ring: rgba(8,145,178,.35);
+  }
 }
 
-/* Header */
-header {
-  background: #161b22;      /* dark header */
-  color: #f0f6fc;
-  padding: 15px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+/* ---------- Base resets ---------- */
+*{box-sizing:border-box}
+html,body{height:100%}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  background: radial-gradient(1200px 600px at 100% -10%, rgba(34,211,238,.10), transparent 40%),
+              radial-gradient(900px 400px at -10% 120%, rgba(34,211,238,.08), transparent 40%),
+              var(--bg);
+  color:var(--text);
+  font-family:var(--font);
+  line-height:1.5;
 }
 
-header h1 {
-  font-size: 1.5rem;
+/* ---------- Layout shell ---------- */
+.container{
+  width:min(1100px, 92vw);
+  margin-inline:auto;
+  padding: 24px 0 56px;
 }
 
-nav a {
-  color: #f0f6fc;
-  text-decoration: none;
-  margin: 0 10px;
+.grid{
+  display:grid;
+  gap:var(--gap);
 }
 
-nav a:hover {
-  color: #58a6ff;           /* blue accent */
+.grid-2{ grid-template-columns: repeat(2,minmax(0,1fr)); }
+.grid-3{ grid-template-columns: repeat(3,minmax(0,1fr)); }
+@media (max-width: 920px){
+  .grid-2,.grid-3{ grid-template-columns: 1fr; }
 }
 
-/* Hero */
-.hero {
-  padding: 40px;
-  text-align: center;
-  background: #238636;       /* green accent */
-  color: white;
+/* ---------- Top Nav ---------- */
+.nav{
+  position:sticky; top:0; z-index:50;
+  backdrop-filter: saturate(180%) blur(10px);
+  background: color-mix(in oklab, var(--bg-elev), transparent 20%);
+  border-bottom: 1px solid color-mix(in oklab, var(--text), transparent 90%);
 }
 
-/* === Grids & Cards === */
-.featured,
-.manga-grid,
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 24px;
-  margin: 20px auto;
-  padding: 20px;
-  max-width: 1200px;
+.nav-inner{
+  display:flex; align-items:center; gap:16px;
+  width:min(1100px, 92vw); margin:0 auto; padding:14px 0;
 }
 
-.manga-card,
-.card {
-  background: #1c2128;       /* dark panels */
-  border-radius: 10px;
-  padding: 24px;
-  margin: 0;
-  text-align: center;
-  box-shadow: 0px 2px 6px rgba(0,0,0,0.3);
+.brand{
+  display:flex; align-items:center; gap:10px; text-decoration:none; color:var(--text);
+  font-weight:700; letter-spacing:.3px;
+}
+.brand-badge{
+  width:34px; height:34px; border-radius:10px;
+  background: linear-gradient(135deg, var(--brand), var(--brand-700));
+  display:grid; place-items:center; color:#001018; font-weight:900;
+  box-shadow: var(--shadow);
+}
+.nav-gap{ flex:1 }
+.nav a, .nav button.link{
+  color:var(--text); text-decoration:none; opacity:.85;
+  padding:10px 12px; border-radius:12px;
+}
+.nav a:hover, .nav button.link:hover{ opacity:1; background: color-mix(in oklab, var(--text), transparent 92%); }
+.nav .btn{ margin-left:8px }
+
+/* ---------- Cards ---------- */
+.card{
+  background: var(--card);
+  border: 2px solid color-mix(in oklab, var(--text), transparent 92%);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 0;                        /* let cover + body control spacing */
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  color: #c9d1d9;
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.card:hover{ transform: translateY(-6px) scale(1.03);   /* pop out */
+  box-shadow: 0 12px 32px rgba(0,0,0,.45);   /* deeper shadow */ }
+.card-body{
+  padding:14px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;         /* middle of the card body */
+  text-align:center;
+  gap:6px;
+  min-height:120px;               /* gives space so “middle” is visible */
+}
+.card-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px }
+.card-title{ 
+  margin:0;
+  font-weight:700;
+  font-size:.95rem;
+  color:var(--text);
+}
+.card-sub{ color:var(--muted); font-size:.9rem }
+.card-meta{
+  margin:0;
+  font-size:.85rem;
+  color: color-mix(in oklab, var(--text), transparent 35%);  /* muted */
+}
+.card-link {
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #0f141a;
+  border: 1px solid #202a36;
+  text-decoration: none;   /* this is what prevents underline */
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
 }
 
-.card img:first-child,
-.manga-card img:first-child {
-  width: 100%;
-  height: 340px;
-  object-fit: contain;
-  display: block;
-  border-radius: 8px;
+/* ---------- Buttons ---------- */
+.btn{
+  appearance:none; outline:0; border:0;
+  background: linear-gradient(180deg, var(--brand), var(--brand-600));
+  color:#001018; font-weight:700;
+  padding:12px 16px; border-radius:14px;
+  cursor:pointer; box-shadow: 0 6px 20px rgba(34,211,238,.25);
+  transition: transform .08s ease, box-shadow .2s ease, filter .2s ease;
 }
-
-/* Headings and text uniform margins */
-.card h3,
-.manga-card h3 {
-  margin: 8px 0 4px 0;
-  text-align: center;
-  color: #f0f6fc;
-}
-
-.card p,
-.manga-card p {
-  margin: 6px 0;
-  color: #c9d1d9;
-}
-
-/* Buttons */
-button,
-.btn {
-  background: #238636;      /* green accent */
-  color: #ffffff;
-  border: none;
-  padding: 10px 14px;
-  border-radius: 6px;
-  margin-top: 10px;
-  cursor: pointer;
-  font-size: 14px;
-  text-decoration: none;
-  display: inline-block;
-}
-
-button:hover,
-.btn:hover {
-  background: #2ea043;
-}
-
-.btn.secondary {
-  background: #30363d;
-  color: #c9d1d9;
-}
-.btn.secondary:hover {
-  background: #484f58;
+.btn:hover{ transform: translateY(-1px); filter:saturate(1.05) }
+.btn:active{ transform: translateY(0); box-shadow: 0 2px 12px rgba(34,211,238,.2) }
+.btn.outline{
+  background: transparent; color: var(--brand);
+  border:1.5px solid color-mix(in oklab, var(--brand), var(--text) 20%);
+  box-shadow: none;
 }
 .btn.ghost {
   background: transparent;
@@ -128,235 +173,577 @@ button:hover,
 .btn.ghost:hover {
   background: rgba(56, 139, 253, 0.1);
 }
-
-/* Footer */
-footer {
-  text-align: center;
-  padding: 15px;
-  background: #161b22;
-  color: #8b949e;
-  margin-top: 20px;
+.btn.danger {
+  background: var(--danger);
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(239,68,68,.35);
+}
+.btn.danger:hover {
+  background: #dc2626;
 }
 
-/* Titles */
-.page-title {
-  text-align: center;
-  margin: 20px 0;
-  font-size: 2.5rem;
-  color: #f0f6fc;
+
+/* ---------- Forms ---------- */
+.form{ display:grid; gap:14px; }
+.input{
+  width:100%; background: var(--bg-elev);
+  color:var(--text); border:1px solid color-mix(in oklab, var(--text), transparent 85%);
+  border-radius: 12px; padding: 12px 14px; outline:0;
+  transition: box-shadow .2s ease, border-color .2s ease;
+}
+.input:focus{
+  border-color: var(--brand);
+  box-shadow: 0 0 0 6px var(--ring);
+}
+.label{ font-size:.92rem; color:var(--muted); margin-bottom:6px }
+
+/* ---------- Tables ---------- */
+.table{
+  width:100%; border-collapse: collapse; overflow:hidden; border-radius:var(--radius);
+  box-shadow: var(--shadow); background: var(--card);
+}
+.table th, .table td{
+  padding:14px 16px; text-align:left; border-bottom:1px solid color-mix(in oklab, var(--text), transparent 90%);
+}
+.table th{ font-size:.9rem; color:var(--muted); font-weight:600 }
+.table tr:hover td{ background: color-mix(in oklab, var(--text), transparent 96%) }
+
+/* ---------- Badges ---------- */
+.badge{
+  display:inline-block; padding:6px 10px; border-radius:999px;
+  font-size:.78rem; font-weight:700; letter-spacing:.25px;
+}
+.badge.ok{ background: color-mix(in oklab, var(--ok), transparent 80%); color: var(--ok) }
+.badge.warn{ background: color-mix(in oklab, var(--warn), transparent 82%); color: var(--warn) }
+.badge.danger{ background: color-mix(in oklab, var(--danger), transparent 82%); color: var(--danger) }
+
+/* ---------- Alerts ---------- */
+.alert{
+  padding:14px 16px; border-radius:16px; border:1px solid transparent;
+  background: color-mix(in oklab, var(--text), transparent 94%);
+}
+.alert.ok{ border-color: color-mix(in oklab, var(--ok), transparent 70%); }
+.alert.warn{ border-color: color-mix(in oklab, var(--warn), transparent 70%); }
+.alert.danger{ border-color: color-mix(in oklab, var(--danger), transparent 70%); }
+
+/* ---------- Auth box ---------- */
+.auth{
+  width:min(420px, 92vw); margin: 8vh auto; padding: 28px;
+  border-radius: 24px; background: var(--card); box-shadow: var(--shadow);
+  border:1px solid color-mix(in oklab, var(--text), transparent 92%);
+}
+.auth h1{ margin: 0 0 10px; font-size:1.35rem }
+.auth p{ color:var(--muted); margin-top:0 }
+
+/* ---------- Profile ---------- */
+.avatar{
+  width:92px; aspect-ratio:1; border-radius:50%;
+  background: linear-gradient(135deg, var(--brand), var(--brand-700));
+  border: 3px solid color-mix(in oklab, var(--text), transparent 80%);
+  box-shadow: var(--shadow);
 }
 
-/* Forum */
-.forum-post {
-  background: #1c2128;
-  margin: 20px auto;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0px 2px 6px rgba(0,0,0,0.3);
-  max-width: 1200px;
-  color: #c9d1d9;
+/* ---------- Footer ---------- */
+.footer{
+  margin-top: 56px; padding: 24px 0; color: var(--muted);
+  border-top:1px solid color-mix(in oklab, var(--text), transparent 90%);
+  text-align:center;
 }
 
-.comments {
-  margin: 10px 0;
-  padding-left: 20px;
-  border-left: 3px solid #58a6ff;
+/* ---------- Tiny helpers ---------- */
+.row{ display:flex; gap:12px; align-items:center }
+.space{ height:14px }
+.right{ margin-left:auto }
+.center{ text-align:center }
+.hidden{ display:none }
+
+/* ---------- Animations ---------- */
+@media (prefers-reduced-motion: no-preference){
+  .fade-in{ animation: fade .25s ease both }
+  @keyframes fade{ from{opacity:.0; transform: translateY(4px)} to{opacity:1; transform:none} }
 }
 
-/* Auth Forms */
-.form-section {
-  background: #1c2128;
-  margin: 20px auto;
-  padding: 20px;
-  border-radius: 10px;
-  box-shadow: 0px 4px 10px rgba(0,0,0,0.3);
-  max-width: 400px;
-  color: #c9d1d9;
+/* ---------- Mobile tweaks ---------- */
+.mobile-only{ display:none }
+@media (max-width:720px){
+  .mobile-only{ display:initial }
+  .nav .desktop-only{ display:none }
 }
-
-.form-section h2 {
-  text-align: center;
-  margin-bottom: 20px;
-  color: #f0f6fc;
-}
-
-.auth-form {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
-.auth-form input {
-  padding: 12px;
-  border: 1px solid #30363d;
-  border-radius: 6px;
-  font-size: 14px;
-  background: #0d1117;
-  color: #c9d1d9;
-}
-
-.auth-form input:focus {
-  border-color: #58a6ff;
-  outline: none;
-}
-
-.auth-form button {
-  background: #238636;
-  color: white;
-  padding: 12px;
-  border: none;
-  border-radius: 6px;
-  font-size: 16px;
-  cursor: pointer;
-  transition: background 0.3s;
-}
-
-.auth-form button:hover {
-  background: #2ea043;
-}
-
-/* Profile & Dashboard Boxes */
-.profile-info,
-.wishlist,
-.bookmarks,
-.reviews,
-.moderator,
-.content-manager {
-  background: #1c2128;
-  margin: 20px auto;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0px 2px 6px rgba(0,0,0,0.3);
-  max-width: 1200px;
-  color: #c9d1d9;
-}
-
-/* Reader navigation buttons */
-#next-chapter-btn,
-#prev-chapter-btn,
-#next-chapter-btn-bottom,
-#prev-chapter-btn-bottom {
-  background: #21262d;
-  color: #c9d1d9;
-  border: none;
-  padding: 12px 20px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 16px;
-  display: inline-block;
-  text-align: center;
-}
-#next-chapter-btn:hover,
-#prev-chapter-btn:hover,
-#next-chapter-btn-bottom:hover,
-#prev-chapter-btn-bottom:hover {
-  background: #30363d;
-}
-#next-chapter-btn:disabled,
-#prev-chapter-btn:disabled,
-#next-chapter-btn-bottom:disabled,
-#prev-chapter-btn-bottom:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Reader images */
-.reader-shell {
-  max-width: 1000px;
-  margin: 20px auto;
-}
-.page-img {
-  width: 100%;
-  height: auto !important;
-  display: block;
-  margin-bottom: 20px;
-}
-
-/* Global text rhythm */
-h1, h2, h3 {
-  margin: 20px 0;
-}
-p {
-  margin: 10px 0;
-  line-height: 1.6;
-}
-
-/* Dropdowns */
-select option {
-  color: #58a6ff !important;
-  background-color: #0d1117;
-}
-
-/* Container rhythm */
-.container {
-  margin: 24px auto;
-  padding: 0 16px;
-  max-width: 1280px;
-}
-/* Grid tuned for cards like the Content tab */
-.grid.grid-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 18px;
-}
-
-/* Clickable card */
-.card-link {
-  display: flex;
-  flex-direction: column;
-  border-radius: 14px;
-  overflow: hidden;
-  background: #0f141a;          /* dark card body */
-  border: 1px solid #202a36;    /* subtle outline */
-  text-decoration: none;
-  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
-}
-
-.card-link:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 20px rgba(0,0,0,.35);
-  border-color: #2f3b4c;
-}
-
-/* Cover image area (same as content tab, but enforce aspect) */
+/* Manga shelf style cover */
 .cover {
   width: 100%;
-  aspect-ratio: 3 / 4;          /* keeps shape consistent */
-  background-size: cover;
-  background-position: center;
-  background-color: #0b0f14;
+  height: 260px;                /* fixed height for shelf look */
+  background: center / contain no-repeat #0b0f14;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0,0,0,.25);
+}
+/* Cards grid — force uniform cover slots */
+.grid.grid-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 30px;
+}
+.card a{ color:inherit; text-decoration:none }
+.card a:hover .card-title{ color:var(--brand) }
+/* -------------------- For the manga reader -------------------- */
+/* Reader layout */
+.reader-wrap{
+  width: min(980px, 92vw);   /* center the reader and cap width */
+  margin-inline: auto;
 }
 
-/* Card body */
-.card-body {
-  padding: 10px 12px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+/* Each page image */
+.page-img{
+  display: block;
+  width: 100%;               /* scale to container width */
+  height: auto;              /* keep aspect ratio */
+  object-fit: contain;       /* never crop */
+  background: #0b0f14;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0,0,0,.35);
+  margin: 0 auto 16px;       /* gap between pages */
+}
+a {
+  text-decoration: none;
+}
+.detail-grid {
+  grid-template-columns: 320px 1fr;
+  align-items: start;   /* stop left card from stretching full height */
+}
+/* make synopsis easier to read */
+.synopsis {
+  font-size: 1.1rem;
+  line-height: 1.7;
+  color: var(--text);
+  max-width: 85ch;
+  margin: 0 auto;
+  text-align: justify;
+  padding: 16px 20px;
+  background: color-mix(in oklab, var(--text), transparent 94%);
+  border-radius: 12px;
 }
 
-.card-title {
-  font-size: 0.98rem;
-  font-weight: 600;
-  color: #e6edf3;
-  line-height: 1.3;
-  margin: 0;
-  min-height: 2.6em;            /* two-line clamp effect */
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+
+/* Slightly tighter on very small screens */
+@media (max-width: 680px){
+  .synopsis{
+    max-width: 62ch;
+    line-height: 1.58;
+  }
+}
+
+/* If you ever want wider copy for short blurbs, add this class too */
+.synopsis.wide{
+  max-width: 90ch;
+}
+.cover.fill {
+  background-size: cover;  /* make cover fill box instead of letterbox */
+}
+
+.chapter-row {
+  cursor: pointer;
+  transition: background .18s ease, transform .08s ease;
+}
+.chapter-row:hover {
+  background: color-mix(in oklab, var(--brand), transparent 92%);
+}
+.chapter-row:active {
+  transform: scale(.997);
+}
+.chapter-row td {
+  font-size: 1rem;
+  padding: 14px 16px;
+}
+/* Hero header with blurred cover background */
+/* HERO: clamp image inside, layer cleanly, fade to page bg */
+.hero{
+  height: 320px;
+  position: relative;
+  border-radius: var(--radius);
   overflow: hidden;
+  padding: 18px 22px;
+  border: 1px solid color-mix(in oklab, var(--text), transparent 92%);
+  background: color-mix(in oklab, var(--bg), black 4%);                 /* solid base so nothing shows through */
+  box-shadow: var(--shadow);
+  isolation: isolate;                    /* keep pseudo layers contained */
 }
 
-.card-meta {
-  font-size: 0.85rem;
-  color: #9fb0c3;
+/* blurred cover layer */
+.hero::before{
+  content: "";
+  position: absolute;
+  inset: -20px;                          /* overpaint edges, still clipped by overflow */
+  background: var(--hero) center / cover no-repeat;
+  filter: blur(22px) saturate(.85) brightness(.6) grayscale(.2);
+  transform: scale(1.1);
+  opacity: .6;
+  z-index: 0;
+}
+
+/* bottom fade to page background — actually positioned this time */
+.hero::after{
+  content: "";
+  position: absolute;                    /* <-- you forgot this */
+  left: 0; right: 0; bottom: -1px;
+  height: 56px;
+  background:
+    radial-gradient(120% 100% at 10% 10%, rgba(0,0,0,.45), transparent 60%),
+    linear-gradient(to bottom, rgba(0,0,0,0), var(--bg));
+  pointer-events: none;
+  z-index: 1;
+}
+
+.hero-inner{
+  position: relative;
+  display: flex;
+  gap: 18px;
+  align-items: flex-end;
+  z-index: 2;                            /* above ::before/::after */
+}
+
+/* small cover used inside the hero */
+.cover-hero{
+  width: 170px; flex: 0 0 170px;
+  aspect-ratio: 2 / 3;
+  background: center / cover no-repeat #0b0f14;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.35);
+}
+
+/* big title over the hero */
+.hero-title{
   margin: 0;
+  font-size: clamp(1.8rem, 4vw + .5rem, 3rem);
+  line-height: 1.15;
+  font-weight: 800;
+}
+.hero-meta{ display:flex; gap:10px; flex-wrap:wrap }
+.hero-actions{ display:flex; gap:10px; flex-wrap:wrap; margin-top:8px }
+
+
+/* ===== Forum layout & aside ===== */
+.forum-layout{ display:grid; grid-template-columns: 280px 1fr; gap:22px }
+@media (max-width: 960px){ .forum-layout{ grid-template-columns: 1fr } .forum-aside{ order:2 } .forum-main{ order:1 } }
+.forum-aside{ position: sticky; top: 84px } /* keeps the panel in view */
+
+/* ===== Contributors ===== */
+.contributors{ list-style:none; padding:0; margin:8px 0 0; display:grid; gap:10px }
+.contrib{ display:flex; gap:10px; align-items:center; padding:8px 10px; border-radius:12px;
+  background: color-mix(in oklab, var(--text), transparent 96%); }
+.contrib .who .name{ font-weight:700; font-size:.95rem }
+.contrib .who .muted{ font-size:.82rem; color:var(--muted) }
+
+/* ===== Post card ===== */
+.stack{ display:grid; gap:18px }
+.post{ overflow:hidden }
+.post-header{ display:flex; align-items:center; gap:12px; padding:14px 14px 0 }
+.post-body{ padding:8px 14px 14px }
+.post-title{ margin:6px 0 6px; font-size:1.15rem; font-weight:800 }
+.post-text{ margin:0 0 10px; color: color-mix(in oklab, var(--text), transparent 10%) }
+.post-footer{ padding:0 14px 14px }
+
+/* Media: keep image neat, not skyscraper */
+.media{ margin:0; border-radius:12px; overflow:hidden; background:#0b0f14; border:1px solid color-mix(in oklab, var(--text), transparent 90%) }
+.media img{
+  display:block; width:100%;
+  max-height: 480px;          /* cap the height */
+  object-fit: contain;        /* show entire image, no weird crop */
+  background:#0b0f14;
 }
 
-/* Optional: nicer page titles */
-.page-title {
-  margin: 6px 0 12px;
-  font-size: 1.4rem;
-  font-weight: 700;
+/* ===== Comments ===== */
+.comments{ border-top:1px solid color-mix(in oklab, var(--text), transparent 92%); padding:12px 14px }
+.comments-title{ margin:0 0 8px; font-size:.95rem; color:var(--muted) }
+.comment-list{ list-style:none; margin:0; padding:0; display:grid; gap:10px }
+.comment{ display:flex; gap:10px }
+.bubble{
+  background: color-mix(in oklab, var(--text), transparent 96%);
+  border:1px solid color-mix(in oklab, var(--text), transparent 88%);
+  padding:10px 12px; border-radius:14px; width:100%;
+}
+.bubble .who{ font-weight:700; font-size:.9rem; margin-bottom:2px }
+
+/* Comment form: textarea grows, button stays tight */
+.comment-form{ display:flex; gap:10px; align-items:flex-start; margin-top:10px }
+.comment-form .input{
+  flex:1; min-height:42px; resize:vertical;
+  border-radius:12px;
+}
+.comment-form .btn{ white-space:nowrap; padding-inline:14px }
+
+/* ===== Avatars (stop the weird pill shape) ===== */
+.avatar{ width:40px; height:40px; border-radius:50%; display:grid; place-items:center; font-weight:800;
+  background: linear-gradient(135deg, var(--brand), var(--brand-700)); color:#001018; box-shadow: var(--shadow) }
+.avatar.small{ width:34px; height:34px }
+.avatar.tiny{ width:26px; height:26px }
+
+/* ===== Chips ===== */
+.chips{ display:flex; gap:8px; flex-wrap:wrap }
+.chip{
+  display:inline-block; padding:6px 10px; border-radius:999px; font-size:.78rem; font-weight:700;
+  background: color-mix(in oklab, var(--brand), transparent 85%); color: var(--brand);
+}
+
+/* Minor polish */
+.btn.ghost{ border:1.5px solid color-mix(in oklab, var(--brand), var(--text) 20%); }
+.btn.block{ display:block; width:100% }
+
+/* ---------- Modal ---------- */
+.modal-root.hidden{ display:none }
+.modal-root{ position:fixed; inset:0; z-index:1000; }
+.modal-backdrop{
+  position:absolute; inset:0;
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(2px);
+}
+.modal{
+  position: absolute; inset: 6vh 0 auto 0;
+  margin: 0 auto; width: min(900px, 94vw);
+  background: var(--card);
+  border: 1px solid color-mix(in oklab, var(--text), transparent 90%);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  max-height: 88vh; overflow:auto; padding: 16px;
+}
+.modal-close{
+  position:absolute; top:10px; right:12px;
+  background: transparent; border:0; font-size: 24px; color: var(--text); cursor:pointer;
+}
+
+/* Reuse post-detail styles inside modal */
+.pd-head{ display:flex; align-items:center; gap:12px; margin-bottom:8px }
+.pd-name{ font-weight:800 }
+.pd-sub{ color:var(--muted); font-size:.9rem }
+.pd-media{ margin:6px 0 10px; display:flex; justify-content:center }
+.pd-media img{ max-width:100%; max-height:72vh; height:auto; object-fit:contain; border-radius:10px }
+.pd-text{ margin:6px 0 0; font-size:1.02rem; line-height:1.6 }
+.pd-comment-list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:12px }
+.pd-comment{ display:grid; grid-template-columns:28px 1fr; gap:10px; align-items:start }
+.pd-bubble{
+  background: color-mix(in oklab, var(--text), transparent 96%);
+  border:1px solid color-mix(in oklab, var(--text), transparent 88%);
+  padding:10px 12px; border-radius:12px;
+}
+.pd-who{ font-weight:700; font-size:.9rem; margin-bottom:2px }
+.pd-form{ display:flex; gap:10px; align-items:flex-start; margin-top:12px }
+.pd-form .input{ flex:1; min-height:46px; resize:vertical }
+/* Make the card top section clickable */
+.post { position: relative; }
+.post-click { position: relative; cursor: pointer; border-radius: var(--radius); }
+.post-link{
+  position: absolute; inset: 0; z-index: 5;
+  border-radius: inherit;
+}
+
+/* Nice hover without wrecking contrast */
+.post-click:hover{
+  background: color-mix(in oklab, var(--text), transparent 97%);
+  transition: background .15s ease;
+}
+
+/* Keep media looking good inside the clickable zone */
+.media{ margin:0; border-radius:12px; overflow:hidden; background:#0b0f14;
+  border:1px solid color-mix(in oklab, var(--text), transparent 90%) }
+.media img{ display:block; width:100%; max-height:480px; object-fit:contain; background:#0b0f14 }
+/* ================================
+   Readability & layout overrides
+   (no new classes, only tweaks)
+   ================================ */
+
+/* Use more width everywhere */
+.container{ width: min(1200px, 96vw); }
+.nav-inner{ width: min(1200px, 96vw); }
+
+/* Slight global font bump so text isn’t ant-sized */
+body{ font-size: 16.5px; }
+
+/* Make “muted” copy actually readable on dark backgrounds */
+.muted, .card-sub{
+  color: color-mix(in oklab, var(--muted), var(--text) 22%);
+}
+
+/* ---------- Forum list ---------- */
+.forum-layout{ grid-template-columns: 320px 1fr; gap: 26px; }
+.stack{ gap: 22px; }
+
+.post-title{
+  font-size: 1.24rem;
+  color: color-mix(in oklab, var(--text), white 6%);
+}
+.post-text{
+  font-size: 1.10rem;
+  line-height: 1.75;
+  color: color-mix(in oklab, var(--text), white 8%);
+}
+
+/* Let images be tall enough to see, without taking over */
+.media img{ max-height: 560px; }
+
+/* ---------- Modal / detail ---------- */
+.modal{
+  width: min(1000px, 96vw);
+  max-height: 90vh;
+  padding: 18px;
+}
+.pd-media img{ max-height: 78vh; }
+
+.pd-text{
+  font-size: 1.15rem;
+  line-height: 1.80;
+  color: color-mix(in oklab, var(--text), white 8%);
+}
+
+/* ---------- Comments ---------- */
+.comments-title{ font-size: 1.05rem; }
+.comment .bubble p,
+.pd-bubble p{
+  font-size: 1rem;
+  line-height: 1.65;
+}
+.comment-form .input,
+.pd-form .input{
+  min-height: 48px;  /* easier to type */
+}
+/* Profile stats */
+.stats-grid{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap:12px;
+}
+.stat{
+  background: color-mix(in oklab, var(--text), transparent 96%);
+  border:1px solid color-mix(in oklab, var(--text), transparent 90%);
+  border-radius: var(--radius-sm);
+  padding:14px;
+  text-align:center;
+}
+.stat-num{
+  font-weight:800;
+  font-size:1.4rem;
+}
+.stat-label{
+  margin-top:2px;
+  color:var(--muted);
+  font-size:.85rem;
+}
+.detail-grid { grid-template-columns: 320px 1fr; align-items: start; }
+.cover.fill { background-size: cover; }
+.card-header.centered { justify-content: center; text-align: center; }
+.synopsis { font-size: 1rem; line-height: 1.55; color: var(--text); }
+.chapter-row { cursor: pointer; transition: background .18s ease, transform .08s ease; }
+.chapter-row:hover { background: color-mix(in oklab, var(--brand), transparent 92%); }
+.chapter-row:active { transform: scale(.997); }
+.btn.danger { background: var(--danger); color: #fff; box-shadow: 0 6px 16px rgba(239,68,68,.35); }
+.btn.danger:hover { background: #dc2626; }
+.table thead { 
+  display: none; 
+}
+.modal.is-open{ display: flex; }
+
+.modal-backdrop{
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(100% 100% at 20% 0%, rgba(34,211,238,.08), transparent 40%),
+    rgba(0,0,0,.55);
+  backdrop-filter: blur(6px);
+}
+
+.modal-card{
+  position: relative; z-index: 1;
+  width: min(560px, 92vw);
+  background: var(--card);
+  border: 1px solid color-mix(in oklab, var(--text), transparent 90%);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+  padding: 18px;
+  animation: modal-pop .18s ease-out both;
+}
+@keyframes modal-pop{ from{ opacity:0; transform: translateY(8px) scale(.98) } to{ opacity:1; transform:none } }
+
+.modal-header{
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
+.modal-title{ margin:0; font-weight:800; font-size:1.25rem; }
+
+.modal-footer{
+  display:flex; gap:10px; justify-content:flex-end; margin-top: 2px;
+}
+
+/* Custom file input that matches buttons */
+.file-input{
+  display:inline-flex; align-items:center; gap:10px;
+  padding:10px 12px; border-radius:12px; cursor:pointer;
+  border:1px dashed color-mix(in oklab, var(--text), transparent 75%);
+  color:var(--muted);
+}
+.file-input input[type=file]{ display:none }
+.file-input:hover{
+  background: color-mix(in oklab, var(--text), transparent 95%);
+}
+
+/* Text areas should be taller and comfy inside modals */
+textarea.input{ min-height: 140px; resize: vertical; }
+.card.fade-in {
+  background: var(--card);   /* opaque card background */
+}
+#chapter-controls { position: sticky; bottom: 0; background: var(--bg); }
+/* Layout wrapper inside hero */
+.hero-body{ flex:1; min-width:0; }
+
+/* Title (left) + Author (right) on one row */
+.hero-head{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:16px;
+  margin-bottom:8px;
+}
+
+/* Keep long titles from smashing the author */
+.hero-title{
+  flex:1 1 auto;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+/* Author on the far right */
+.hero-author{
+  flex:0 0 auto;
+  display:flex;
+  align-items:baseline;
+  gap:6px;
+  color: var(--muted);
+  font-weight:600;
+}
+
+/* Slight emphasis on the author name */
+.hero-author strong{
+  color: var(--text);
+  font-weight:700;
+}
+
+/* Badge + actions row */
+.hero-meta{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  flex-wrap:wrap;
+}
+
+/* Responsive: stack title/author on small screens */
+@media (max-width: 720px){
+  .hero-head{
+    flex-direction:column;
+    align-items:flex-start;
+    gap:4px;
+  }
+  .hero-title{
+    white-space:normal;   /* allow wrapping on phones */
+  }
+  .hero-author{
+    order:2;
+  }
 }
