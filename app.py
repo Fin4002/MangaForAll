@@ -1361,7 +1361,7 @@ def user_card(uid: int):
     template = "user_card_modal.html" if is_partial else "user_public.html"
     return render_template(template, profile=u, favorites=favorites, viewer=current_user())
 
-
+#########============================######
 
 # ---------------------------
 # Entrypoint

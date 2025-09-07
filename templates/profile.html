@@ -43,9 +43,17 @@
 
       <div class="space"></div>
 
-      <div class="row" style="justify-content:space-between">
-        <span class="card-sub">Email</span>
-        <strong>{{ user.email or '—' }}</strong>
+      <!-- Email (clean info bar with copy button) -->
+      <div class="info-bar" title="{{ user.email or '—' }}">
+        <span class="info-bar__label">Email</span>
+        <div class="info-bar__value">
+          {% if user.email %}
+            <a href="mailto:{{ user.email }}">{{ user.email }}</a>
+          {% else %} — {% endif %}
+        </div>
+        {% if user.email %}
+          <button class="btn ghost tiny" type="button" data-copy="{{ user.email }}">Copy</button>
+        {% endif %}
       </div>
 
       <div class="space"></div>
@@ -72,7 +80,7 @@
     <div class="grid" style="gap: var(--gap);">
       <!-- Account card -->
       <div class="card fade-in">
-        <div class="card-header">
+        <div class="card-header left">
           <div class="card-title">Account</div>
         </div>
 
@@ -93,7 +101,7 @@
 
       <!-- Favorites card -->
       <div class="card fade-in">
-        <div class="card-header">
+        <div class="card-header left">
           <div class="card-title">Favorites ({{ favorites|length }})</div>
         </div>
 
@@ -127,6 +135,33 @@
       border: 3px solid color-mix(in oklab, var(--text, #e5e7eb), transparent 80%);
       box-shadow: 0 10px 30px rgba(0,0,0,.35);
       background:#0b0f14;
+    }
+
+    /* --- Info bar (read-only field) --- */
+    .info-bar{
+      display:flex; align-items:center; gap:10px;
+      padding:10px 12px;
+      border-radius:12px;
+      background: color-mix(in oklab, var(--text), transparent 94%);
+      border:1px solid color-mix(in oklab, var(--text), transparent 88%);
+      box-shadow: var(--shadow);
+    }
+    .info-bar__label{
+      font-weight:700; color: var(--muted); min-width:64px;
+    }
+    .info-bar__value{
+      flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+      font-weight:700; color: var(--text);
+    }
+    .info-bar__value a{ color:inherit; text-decoration:none; }
+
+    /* Tiny variant for the copy button */
+    .btn.tiny{ padding:6px 10px; font-size:.85rem; border-radius:10px; }
+
+    /* Left-align card header */
+    .card-header.left {
+      justify-content: flex-start;
+      padding-left: 10px;
     }
   </style>
 
@@ -171,5 +206,21 @@
         img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
       });
     })();
+  </script>
+
+  <!-- Copy-to-clipboard for email -->
+  <script>
+    document.addEventListener('click', async (e) => {
+      const btn = e.target.closest('[data-copy]');
+      if (!btn) return;
+      try {
+        await navigator.clipboard.writeText(btn.getAttribute('data-copy') || '');
+        btn.textContent = 'Copied';
+        setTimeout(()=> btn.textContent = 'Copy', 1200);
+      } catch {
+        btn.textContent = 'Failed';
+        setTimeout(()=> btn.textContent = 'Copy', 1200);
+      }
+    });
   </script>
 {% endblock %}
