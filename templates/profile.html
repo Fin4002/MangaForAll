@@ -3,6 +3,7 @@
 {% block content %}
   {% set cache_v = session.get('avatar_ver', 0) %}
   <h1 class="page-title center">Your Profile</h1>
+
   <div class="grid" style="grid-template-columns: 320px 1fr; gap: var(--gap); align-items:start;">
     <!-- LEFT: Identity / Avatar / Stats -->
     <div class="card fade-in">
@@ -49,7 +50,7 @@
 
       <div class="space"></div>
 
-      <!-- Stats: only Chapters read -->
+      <!-- Stats -->
       <div class="stats-grid">
         <div class="stat">
           <div class="stat-num">{{ user.no_of_chapters_read or 0 }}</div>
@@ -67,51 +68,53 @@
       </div>
     </div>
 
-    <!-- RIGHT: Account actions + Favorites (Recent Activity removed) -->
-    <div class="card fade-in">
-      <!-- Account: email + password -->
-      <div class="card-header">
-        <div class="card-title">Account</div>
-      </div>
-
-      <!-- Change Email -->
-      <form class="form" method="post" action="{{ url_for('change_email') }}" style="max-width:520px; margin-bottom:16px;">
-        <label class="label">Email</label>
-        <input class="input" type="email" name="email" value="{{ user.email }}" required autocomplete="email">
-        <div class="row" style="gap:10px; flex-wrap:wrap; margin-top:8px;">
-          <button class="btn" type="submit">Save email</button>
+    <!-- RIGHT COLUMN: two separate cards -->
+    <div class="grid" style="gap: var(--gap);">
+      <!-- Account card -->
+      <div class="card fade-in">
+        <div class="card-header">
+          <div class="card-title">Account</div>
         </div>
-      </form>
 
-      <!-- Change Password opens dedicated page (new tab) -->
-      <div class="row" style="gap:10px; flex-wrap:wrap;">
-        <a class="btn outline" href="{{ url_for('password_form') }}" target="_blank" rel="noopener">Change password</a>
-      </div>
+        <!-- Change Email -->
+        <form class="form" method="post" action="{{ url_for('change_email') }}" style="max-width:520px; margin-bottom:16px; padding: 0 14px 14px;">
+          <label class="label">Email</label>
+          <input class="input" type="email" name="email" value="{{ user.email }}" required autocomplete="email">
+          <div class="row" style="gap:10px; flex-wrap:wrap; margin-top:8px;">
+            <button class="btn" type="submit">Save email</button>
+          </div>
+        </form>
 
-      <div class="space"></div>
-
-      <!-- Favorites -->
-      <div class="card-header">
-        <div class="card-title">Favorites ({{ favorites|length }})</div>
-      </div>
-
-      {% if favorites %}
-        <div class="grid grid-cards">
-          {% for m in favorites %}
-            <a class="card card-link" href="{{ url_for('manga_detail', manga_id=m.manga_id) }}" aria-label="{{ m.Title }}">
-              <img
-                src="{{ url_for('static', filename=m.CoverPath) if m.CoverPath else url_for('static', filename='placeholder.jpg') }}"
-                alt="{{ m.Title }}">
-              <div class="card-body">
-                <h3 class="card-title">{{ m.Title }}</h3>
-                <p class="card-meta">{{ m.Author_name or 'Unknown' }}</p>
-              </div>
-            </a>
-          {% endfor %}
+        <!-- Change Password opens dedicated page (new tab) -->
+        <div class="row" style="gap:10px; flex-wrap:wrap; padding: 0 14px 16px;">
+          <a class="btn outline" href="{{ url_for('password_form') }}" target="_blank" rel="noopener">Change password</a>
         </div>
-      {% else %}
-        <p class="card-sub" style="padding: 0 16px 16px">No favorites yet. Go add some ⭐</p>
-      {% endif %}
+      </div>
+
+      <!-- Favorites card -->
+      <div class="card fade-in">
+        <div class="card-header">
+          <div class="card-title">Favorites ({{ favorites|length }})</div>
+        </div>
+
+        {% if favorites %}
+          <div class="grid grid-cards" style="padding: 0 14px 14px;">
+            {% for m in favorites %}
+              <a class="card card-link" href="{{ url_for('manga_detail', manga_id=m.manga_id) }}" aria-label="{{ m.Title }}">
+                <img
+                  src="{{ url_for('static', filename=m.CoverPath) if m.CoverPath else url_for('static', filename='placeholder.jpg') }}"
+                  alt="{{ m.Title }}">
+                <div class="card-body">
+                  <h3 class="card-title">{{ m.Title }}</h3>
+                  <p class="card-meta">{{ m.Author_name or 'Unknown' }}</p>
+                </div>
+              </a>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="card-sub" style="padding: 0 16px 16px">No favorites yet. Go add some ⭐</p>
+        {% endif %}
+      </div>
     </div>
   </div>
 

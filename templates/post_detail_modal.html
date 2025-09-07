@@ -7,7 +7,7 @@
       <a href="{{ url_for('user_card', uid=post.user_id) }}"
          data-modal="user"
          aria-label="Open {{ post.author or 'User' }}’s profile">
-        <img class="avatar small"
+        <img class="avatar poster"
              src="{{ url_for('user_avatar', uid=post.user_id) }}?v={{ session.get('avatar_ver', 0) }}"
              alt="{{ post.author or 'User' }}’s avatar">
       </a>
@@ -126,3 +126,16 @@
     </form>
   {% endif %}
 </div>
+
+<style>
+  /* Poster avatar for post modal */
+  .avatar.poster {
+    width: 50px;
+    height: 50px;
+    min-width: 50px;
+    min-height: 50px;
+    border-radius: 50%;
+    box-shadow: var(--shadow);
+    object-fit: cover;
+  }
+</style>

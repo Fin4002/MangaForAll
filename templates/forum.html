@@ -60,7 +60,7 @@
                     aria-label="Open {{ post.author or 'User' }}’s profile"
                   >
                     <img
-                      class="avatar small"
+                      class="avatar poster"
                       src="{{ url_for('user_avatar', uid=poster_uid) }}?v={{ session.get('avatar_ver', 0) }}"
                       alt="{{ post.author or 'User' }}’s avatar"
                     >
@@ -173,6 +173,17 @@
 <style>
   /* Ensure user links in post header sit above the full-card overlay link */
   .user-card-trigger { position: relative; z-index: 6; }
+
+  /* Poster avatar */
+  .avatar.poster {
+    width: 50px;
+    height: 50px;
+    min-width: 50px;
+    min-height: 50px;
+    border-radius: 50%;
+    box-shadow: var(--shadow);
+    object-fit: cover;
+  }
 </style>
 
 {% endblock %}

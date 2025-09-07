@@ -1044,3 +1044,16 @@ textarea.input{ min-height: 140px; resize: vertical; }
 @media (min-width: 900px){
   .modal{ width: min(1020px, 96vw); }
 }
+
+
+
+/* Poster avatar for forum posts / post modal */
+.avatar.poster {
+  width: 50px;   /* larger than .small (34px) */
+  height: 50px;
+  min-width: 50px;  /* ensures proper flex layout */
+  min-height: 50px;
+  border-radius: 50%;
+  box-shadow: var(--shadow);
+  object-fit: cover;
+}
