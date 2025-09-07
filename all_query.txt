@@ -156,11 +156,6 @@ CREATE TABLE Moderator (
     FOREIGN KEY (admin_id) REFERENCES Admin(admin_id)
         ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB;
-ALTER TABLE manga
-ADD COLUMN CoverPath VARCHAR(255) NULL AFTER synopsis;
-INSERT INTO admin (name) VALUES ('SuperAdmin');
-ALTER TABLE users
-ADD COLUMN Profile_pic mediumblob NULL ;
 
 ALTER TABLE users
 ADD COLUMN Profile_pic mediumblob NULL ;
@@ -169,3 +164,16 @@ ALTER TABLE users
   ADD COLUMN is_banned TINYINT(1) NOT NULL DEFAULT 0 AFTER Profile_pic,
   ADD COLUMN ban_reason TEXT NULL AFTER is_banned,
   ADD COLUMN ban_until DATETIME NULL AFTER ban_reason;
+
+ALTER TABLE review_rating 
+MODIFY COLUMN review_id INT NOT NULL AUTO_INCREMENT,
+
+ALTER TABLE Wishlist 
+MODIFY COLUMN wishlist_id INT NOT NULL AUTO_INCREMENT,
+
+ALTER TABLE review_rating
+  ADD COLUMN created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP; 
+
+ALTER TABLE review_rating
+  ADD UNIQUE KEY uq_review_per_user (manga_id, user_id),
+  ADD INDEX idx_review_manga (manga_id);
