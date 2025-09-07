@@ -161,3 +161,11 @@ ADD COLUMN CoverPath VARCHAR(255) NULL AFTER synopsis;
 INSERT INTO admin (name) VALUES ('SuperAdmin');
 ALTER TABLE users
 ADD COLUMN Profile_pic mediumblob NULL ;
+
+ALTER TABLE users
+ADD COLUMN Profile_pic mediumblob NULL ;
+
+ALTER TABLE users
+  ADD COLUMN is_banned TINYINT(1) NOT NULL DEFAULT 0 AFTER Profile_pic,
+  ADD COLUMN ban_reason TEXT NULL AFTER is_banned,
+  ADD COLUMN ban_until DATETIME NULL AFTER ban_reason;
