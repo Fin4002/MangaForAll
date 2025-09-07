@@ -978,3 +978,69 @@ textarea.input{ min-height: 140px; resize: vertical; }
 }
 .chapters-table tr.chapter-row{ cursor:pointer; }
 .chapters-table tr.chapter-row:hover .chapter-link{ text-decoration: underline; }
+
+
+
+
+/* ---- User card modal (single-window look) ---- */
+.uc-modal{ padding: 4px; } /* modal already has padding; keep this light */
+.uc-head{
+  display:flex; align-items:center; gap:12px;
+  margin: 2px 0 10px;
+}
+.uc-name{ font-weight:800; font-size:1.2rem; }
+.uc-sub{ color: var(--muted); font-size:.95rem; }
+.uc-section{ margin-top: 8px; }
+.uc-grid{ margin-top: 6px; }
+
+/* Optional: widen modal slightly for gallery feel (already present, but keep it neat) */
+/* .modal { width: min(1000px, 96vw); }  // you already have this in your CSS */
+
+
+
+
+/* ---- User card modal: cleaner header & larger meta ---- */
+.uc-modal{ padding: 6px; }
+
+.uc-head{
+  display:flex; align-items:center; gap:14px;
+  margin: 4px 0 12px;
+}
+
+.uc-head .avatar.small{
+  width: 44px; height: 44px;   /* a bit larger than default */
+  box-shadow: var(--shadow);
+}
+
+.uc-head-text{ display:flex; flex-direction:column; gap:6px; }
+
+.uc-name{
+  margin:0;
+  font-weight: 800;
+  font-size: 1.35rem;          /* bigger username */
+  letter-spacing: .2px;
+  color: color-mix(in oklab, var(--text), white 6%);
+}
+
+.uc-meta{
+  display:flex; flex-wrap:wrap; gap:8px;
+}
+
+.uc-pill{
+  display:inline-flex; align-items:center; gap:8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--text), transparent 94%);
+  border: 1px solid color-mix(in oklab, var(--text), transparent 86%);
+  font-size: 1.02rem;          /* larger & readable */
+  font-weight: 650;
+  color: color-mix(in oklab, var(--text), white 4%);
+}
+
+.uc-section{ margin-top: 10px; }
+.uc-grid{ margin-top: 8px; }
+
+/* Make the modal breathe a bit more on wide screens */
+@media (min-width: 900px){
+  .modal{ width: min(1020px, 96vw); }
+}

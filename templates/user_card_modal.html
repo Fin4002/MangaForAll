@@ -1,0 +1,55 @@
+{# templates/user_card_modal.html #}
+<button class="modal-close" data-close aria-label="Close">×</button>
+
+<div class="uc-modal">
+  <header class="uc-head">
+    <img
+      class="avatar small"
+      src="{{ url_for('user_avatar', uid=profile.user_id) }}"
+      alt="{{ profile.username }}’s avatar"
+      loading="eager"
+    >
+    <div class="uc-head-text">
+      <h2 class="uc-name">{{ profile.username }}</h2>
+
+      <div class="uc-meta">
+        <span class="uc-pill">
+          Member since
+          {{ profile.joining_date.strftime('%b %d, %Y') if profile.joining_date else '—' }}
+        </span>
+        <span class="uc-pill">
+          {{ profile.no_of_chapters_read or 0 }} chapters read
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <section class="uc-section">
+    <div class="card-header">
+      <div class="card-title">Favorites ({{ favorites|length }})</div>
+    </div>
+
+    {% if favorites %}
+      <div class="grid grid-cards uc-grid">
+        {% for m in favorites %}
+          <a class="card card-link"
+             href="{{ url_for('manga_detail', manga_id=m.manga_id) }}"
+             aria-label="{{ m.Title }}">
+            <img
+              src="{{ url_for('static', filename=m.CoverPath) if m.CoverPath else url_for('static', filename='placeholder.jpg') }}"
+              alt="{{ m.Title }}"
+              loading="lazy"
+              onerror="this.parentElement?.remove()"
+            >
+            <div class="card-body">
+              <h3 class="card-title">{{ m.Title }}</h3>
+              <p class="card-meta">{{ m.Author_name or 'Unknown' }}</p>
+            </div>
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="card-sub">No favorites yet.</p>
+    {% endif %}
+  </section>
+</div>

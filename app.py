@@ -1287,6 +1287,32 @@ def change_password():
 
     return redirect(url_for('profile'))
 
+
+#########============================######
+
+# ---------- Public user card (modal-friendly) ----------
+@app.route("/u/<int:uid>", methods=["GET"])
+def user_card(uid: int):
+    # Minimal public info
+    u = query_one("""
+        SELECT user_id, username, joining_date, no_of_chapters_read, Profile_pic
+        FROM users
+        WHERE user_id=%s
+    """, (uid,))
+    if not u:
+        abort(404)
+
+    # Favorites (already have helper)
+    favorites = user_favorites(uid)
+
+    # Render modal partial when opened via data-modal / fetch
+    is_partial = (request.args.get("partial")
+                  or request.headers.get("X-Requested-With") == "fetch")
+    template = "user_card_modal.html" if is_partial else "user_public.html"
+    return render_template(template, profile=u, favorites=favorites, viewer=current_user())
+
+
+
 # ---------------------------
 # Entrypoint
 # ---------------------------

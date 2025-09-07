@@ -4,21 +4,41 @@
 <div class="pd-modal">
   <header class="pd-head">
     {% if post.user_id %}
-      <img class="avatar small"
-           src="{{ url_for('user_avatar', uid=post.user_id) }}?v={{ session.get('avatar_ver', 0) }}"
-           alt="{{ post.author or 'User' }}">
+      <a href="{{ url_for('user_card', uid=post.user_id) }}"
+         data-modal="user"
+         aria-label="Open {{ post.author or 'User' }}’s profile">
+        <img class="avatar small"
+             src="{{ url_for('user_avatar', uid=post.user_id) }}?v={{ session.get('avatar_ver', 0) }}"
+             alt="{{ post.author or 'User' }}’s avatar">
+      </a>
     {% else %}
       <div class="avatar small">{{ (post.author or 'A')[:1] }}</div>
     {% endif %}
     <div>
-      <div class="pd-name">{{ post.author or 'Anonymous' }}</div>
-      <div class="pd-sub">Post #{{ post.post_id }}</div>
+      {% if post.user_id %}
+        <a href="{{ url_for('user_card', uid=post.user_id) }}"
+           data-modal="user"
+           class="pd-name"
+           aria-label="Open {{ post.author or 'User' }}’s profile">
+          {{ post.author or 'Anonymous' }}
+        </a>
+      {% else %}
+        <div class="pd-name">{{ post.author or 'Anonymous' }}</div>
+      {% endif %}
+      <div class="pd-sub">
+        Post #{{ post.post_id }}
+        {% if post.date_posted %} · {{ post.date_posted.strftime('%b %d, %Y %H:%M') }}{% endif %}
+      </div>
     </div>
   </header>
 
   {% if post.image %}
     <figure class="pd-media">
-      <img src="{{ url_for('post_image_blob', post_id=post.post_id) }}" alt="Post image">
+      <img
+        src="{{ url_for('post_image_blob', post_id=post.post_id) }}"
+        alt="Image attached to '{{ post.title }}'"
+        loading="lazy"
+        onerror="this.closest('.pd-media')?.remove();">
     </figure>
   {% endif %}
 
@@ -27,21 +47,36 @@
   {% endif %}
 
   <section class="comments" style="border-top:1px solid color-mix(in oklab, var(--text), transparent 92%); padding-top:12px">
-    <h4 class="comments-title">Comments</h4>
+    <h4 class="comments-title">
+      Comments{% if comments %} ({{ comments|length }}){% endif %}
+    </h4>
 
     {% if comments and comments|length %}
       <ul class="pd-comment-list">
         {% for c in comments %}
           <li class="pd-comment">
             {% if c.user_id %}
-              <img class="avatar tiny"
-                   src="{{ url_for('user_avatar', uid=c.user_id) }}?v={{ session.get('avatar_ver', 0) }}"
-                   alt="{{ c.username or 'User' }}">
+              <a href="{{ url_for('user_card', uid=c.user_id) }}"
+                 data-modal="user"
+                 aria-label="Open {{ c.username or 'User' }}’s profile">
+                <img class="avatar tiny"
+                     src="{{ url_for('user_avatar', uid=c.user_id) }}?v={{ session.get('avatar_ver', 0) }}"
+                     alt="{{ c.username or 'User' }}’s avatar">
+              </a>
             {% else %}
               <div class="avatar tiny">{{ (c.username or 'A')[:1] }}</div>
             {% endif %}
             <div class="pd-bubble">
-              <div class="pd-who">{{ c.username or 'Anonymous' }}</div>
+              {% if c.user_id %}
+                <a href="{{ url_for('user_card', uid=c.user_id) }}"
+                   data-modal="user"
+                   class="pd-who"
+                   aria-label="Open {{ c.username or 'Anonymous' }}’s profile">
+                  {{ c.username or 'Anonymous' }}
+                </a>
+              {% else %}
+                <div class="pd-who">{{ c.username or 'Anonymous' }}</div>
+              {% endif %}
               <p>{{ c.content }}</p>
             </div>
           </li>
@@ -56,31 +91,37 @@
             action="{{ url_for('post_detail', post_id=post.post_id) }}?partial=1"
             class="pd-form"
             data-ajax>
-        <textarea name="content" class="input" rows="3" placeholder="Write a comment…" required></textarea>
+        <textarea name="content" class="input" rows="3" placeholder="Write a comment…" required>
+{{ request.form.content if request.form and request.endpoint == 'post_detail' and request.view_args.get('post_id') == post.post_id else '' }}</textarea>
         <button class="btn" type="submit">Comment</button>
       </form>
     {% else %}
       <p class="card-sub">Please <a href="{{ url_for('login') }}">log in</a> to comment.</p>
     {% endif %}
   </section>
+
   {% if user and is_moderator(user) and post.user_id %}
+    <hr style="margin:14px 0; border-color: color-mix(in oklab, var(--text), transparent 88%)">
+
     {% if not user_id_is_banned(post.user_id) %}
-      <!-- show Ban button -->
-      <form method="post" action="{{ url_for('mod_ban_user', user_id=post.user_id) }}">
+      <!-- Ban -->
+      <form method="post" action="{{ url_for('mod_ban_user', user_id=post.user_id) }}" class="form" style="max-width:360px">
         <input name="reason" class="input" placeholder="Reason (optional)">
-        <input name="days" class="input" type="number" min="0" placeholder="Days (blank=permanent)">
-        <button class="btn warning" type="submit">Ban Author</button>
+        <input name="days" class="input" type="number" min="0" placeholder="Days (blank = permanent)">
+        <button class="btn warn" type="submit">Ban Author</button>
       </form>
     {% else %}
-      <!-- show Unban button -->
+      <!-- Unban -->
       <form method="post" action="{{ url_for('mod_unban_user', user_id=post.user_id) }}">
         <button class="btn outline" type="submit">Unban Author</button>
       </form>
     {% endif %}
 
+    <!-- Delete -->
     <form method="post"
-        action="{{ url_for('mod_delete_post', post_id=post.post_id) }}"
-        onsubmit="return confirm('Delete this post and its comments?');">
+          action="{{ url_for('mod_delete_post', post_id=post.post_id) }}"
+          onsubmit="return confirm('Delete this post and its comments?');"
+          style="margin-top:10px">
       <button class="btn danger" type="submit">Delete Post</button>
     </form>
   {% endif %}
