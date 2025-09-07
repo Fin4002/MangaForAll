@@ -1,5 +1,3 @@
-# app.py — Flask + mysql-connector-python, built to match your schema
-# Schema used (from your diagram / dump):
 #   users(user_id, username, joining_date, no_of_chapters_read, email)
 #   user_auth(user_id, password_hash, admin_id)
 #   admin(admin_id, name)
@@ -33,22 +31,21 @@ from flask import session, redirect, url_for, flash, request
 import re
 
 
-# ---------------------------
+
 # Config
 # ---------------------------
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-change-me')
 
-# uploads (for forum images saved in DB as BLOB we still check type/size)
+# uploads for forum images saved in DB as BLOB w
 UPLOAD_FOLDER = "static/uploads"
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB
 
-# ---------------------------
+
 # DB Pool
-# ---------------------------
 def parse_db_url():
     # Accept DATABASE_URL like: mysql://user:pass@127.0.0.1:3306/mangaforall
     url = os.getenv('DATABASE_URL', 'mysql://root:@127.0.0.1:3306/mangaforall')
@@ -62,7 +59,6 @@ def parse_db_url():
         'charset': 'utf8mb4',
         'autocommit': False
     }
-
 DB_CFG = parse_db_url()
 POOL = pooling.MySQLConnectionPool(pool_name="mfa_pool", pool_size=5, **DB_CFG)
 
@@ -95,10 +91,6 @@ def execute(sql, params=()):
             cnx.commit()
             return cur.lastrowid
 
-# ---------------------------
-# Paths and FS helpers
-# Paths
-# ---------------------------
 def resources_root():
     # static/Resources is the manga warehouse
     return os.path.join(app.static_folder, 'Resources')
@@ -158,10 +150,7 @@ def list_images(folder_path):
     imgs.sort(key=natural_sort_key)
     return imgs
 
-# ---------------------------
 # Auth helpers
-# ---------------------------
-
 def current_user():
     uid = session.get('user_id')
     if not uid:
@@ -264,7 +253,7 @@ def moderator_required(fn):
 
 @app.context_processor
 def inject_everything():
-    # one place to inject helpers into Jinja
+    # one place to inject current_user everywhere
     return dict(
         user=current_user(),
         is_admin=is_admin,
@@ -274,9 +263,6 @@ def inject_everything():
         user_id_is_banned=user_id_is_banned,
     )
 
-# ---------------------------
-# Auth routes
-# ---------------------------
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
@@ -437,7 +423,7 @@ def manga_detail(manga_id):
     manga_ctx["Author_name"] = author_final
     manga_ctx["publication_status"] = status_final
     manga_ctx["synopsis"] = synopsis_text
-    # ── Reviews & average for sidebar ───────────────────────────────────────────
+
     reviews = query_all("""
         SELECT
             rr.reviews    AS body,
@@ -470,24 +456,24 @@ def manga_detail(manga_id):
         review_count=int(avg_row["review_count"] or 0),
         user=current_user()
     )
-# Add-reviews/ratings#
+# Add-reviews/ratings #
 @app.post("/manga/<int:manga_id>/review")
 @login_required
 def add_review(manga_id):
     u = current_user()
-    # pull values
+
     try:
         rating = int(request.form.get("rating", 0))
     except ValueError:
         rating = 0
     body = (request.form.get("body") or request.form.get("review") or "").strip()
 
-    # validate
+    # validate rating
     if rating < 1 or rating > 5:
         flash("Rating must be between 1 and 5.", "warning")
         return redirect(url_for("manga_detail", manga_id=manga_id))
 
-    # one-per-user-per-manga upsert (requires unique index on (manga_id, user_id))
+    # one-per-user-per-manga
     execute("""
         INSERT INTO review_rating (manga_id, user_id, ratings, reviews)
         VALUES (%s, %s, %s, %s)
@@ -506,9 +492,8 @@ def profile():
     favorites = user_favorites(u["user_id"])
     return render_template("profile.html", user=u, favorites=favorites)
 
-# ---------------------------
+
 # Resources scanning helpers
-# ---------------------------
 IMAGE_EXTS = ('.jpg', '.jpeg', '.png', '.webp', '.gif')
 
 def natural_sort_keys(s):
@@ -545,7 +530,7 @@ def is_chapter_folder(name: str) -> bool:
 def chapter_sort_key(name: str):
     m = re.search(r'\d+', name)
     return int(m.group()) if m else name.casefold()
-#Accept "ch.001", "ch1", "chapter 1", "Chapter-12", etc.
+
 def is_chapter_folder(name: str) -> bool:
     lname = name.lower()
     return lname.startswith("ch") or lname.startswith("chapter")
@@ -626,7 +611,7 @@ def content_detail(folder):
         chapters=chapters,
         approved=approved
     )
-
+# Content Approval #
 @app.route('/dashboard/content/<folder>/approve', methods=['POST', 'GET'])
 @content_manager_required
 def content_approve(folder):
@@ -685,7 +670,7 @@ def content_approve(folder):
         flash(f"DB insert failed: {e}", "danger")
 
     return redirect(url_for('content_detail', folder=folder))
-
+# For Checking Content Manager
 @app.route('/dashboard/content/<folder>/remove', methods=['POST'])
 @content_manager_required
 def content_remove(folder):
@@ -707,9 +692,9 @@ def content_remove(folder):
         flash("No approved database record found for this folder. Nothing deleted.", "info")
     return redirect(url_for('content_dashboard'))
 
-# ---------------------------
+
 # Reader
-# ---------------------------
+
 @app.route('/reader/<folder>/<chapter>')
 def reader(folder, chapter):
     base = resources_root()
@@ -753,9 +738,9 @@ def reader(folder, chapter):
     return render_template("reader.html", folder=folder, chapter=chapter_ctx, pages=pages,
                            prev_chapter=prev_ch, next_chapter=next_ch)
 
-# ---------------------------
-# Resources → DB sync (manual)
-# ---------------------------
+
+# Resources - DB sync #
+
 def ensure_manga_row(title_str, user_row):
     existing = query_one("SELECT manga_id FROM manga WHERE Title=%s", (title_str,))
     if existing:
@@ -939,12 +924,10 @@ def post_detail(post_id):
     if not post:
         abort(404)
 
-    # Helper to render either full page or modal partial
+
     def render_partial_or_full():
         is_partial = request.args.get("partial") or request.headers.get("X-Requested-With") == "fetch"
         template = "post_detail_modal.html" if is_partial else "post_detail.html"
-
-        # Include commenter user_id so we can render their avatars
         comments = query_all(
             """
             SELECT
@@ -988,14 +971,10 @@ def post_detail(post_id):
             (content, u["user_id"], post_id, u["admin_id"] if is_admin(u) else None)
         )
 
-        # If this was an Ajax/modal submit, return the updated partial
+
         if request.args.get("partial") or request.headers.get("X-Requested-With") == "fetch":
             return render_partial_or_full()
-
-        # Normal full-page POST → redirect
         return redirect(url_for("post_detail", post_id=post_id))
-
-    # GET: render appropriate template
     return render_partial_or_full()
 
 
@@ -1009,11 +988,8 @@ def post_image(post_id):
     )
     if not row or not row.get("image"):
         abort(404)
-
-    # Prefer stored mime if present
     mime = row.get("image_mime")
     if not mime:
-        # Detect from raw bytes; falls back to JPEG if unknown
         mime = filetype.guess_mime(row["image"]) or "image/jpeg"
 
     return Response(row["image"], mimetype=mime)
@@ -1036,10 +1012,6 @@ def add_comment(post_id):
     )
     flash("Comment added!", "success")
     return redirect(url_for('forum'))
-
-# ---------------------------
-# Moderator tools
-# ---------------------------
 
 @app.route("/mod/ban/<int:user_id>", methods=["POST"])
 @moderator_required
@@ -1087,7 +1059,7 @@ def mod_delete_post(post_id):
 #########============================######
 
 
-# --- Avatar upload (uses your existing pool + helpers) ---
+# --- Avatar upload  ---
 
 AVATAR_FOLDER = os.path.join(app.static_folder, "avatars")
 os.makedirs(AVATAR_FOLDER, exist_ok=True)
@@ -1111,7 +1083,7 @@ def upload_avatar():
     u = current_user()
     uid = u["user_id"]
 
-    # remove any previous avatar files (any extension)
+    # remove any previous avatar files 
     for old in glob.glob(os.path.join(AVATAR_FOLDER, f"user_{uid}.*")):
         try: os.remove(old)
         except OSError: pass
@@ -1122,13 +1094,12 @@ def upload_avatar():
     save_fs = os.path.join(AVATAR_FOLDER, fname)
     file.save(save_fs)
 
-    # store RELATIVE path ONLY (relative to /static)
+    # store RELATIVE path ONLY 
     rel_path = f"avatars/{fname}"
 
-    # write to DB using your helper (same pool)
+    # write to DB using  helper 
     execute("UPDATE users SET Profile_pic=%s WHERE user_id=%s", (rel_path, uid))
 
-    # cache-bust for the template
     session["avatar_ver"] = ts
 
     flash("Profile picture updated!", "success")
@@ -1161,22 +1132,16 @@ def user_avatar(uid: int):
     # ---- Case A: pic is bytes (BLOB) ----
     if isinstance(pic, (bytes, bytearray)) and pic:
         data = bytes(pic)
-
-        # If these bytes look like an actual image, serve them directly.
-        # filetype.guess returns None for plain text/path bytes.
         if filetype.guess(data) or filetype.guess_mime(data):
             resp = Response(data, mimetype=(filetype.guess_mime(data) or "image/jpeg"))
             resp.headers["Cache-Control"] = "no-store"
             return resp
-
-        # Otherwise try to interpret the bytes as a UTF-8 path string
         try:
             path_str = data.decode("utf-8", errors="strict").strip().strip("\x00").strip("'").strip('"')
         except Exception:
             path_str = None
 
         if path_str:
-            # Allow either 'avatars/...' or 'static/avatars/...'
             fs_path = (
                 os.path.join(app.static_folder, path_str.replace("/", os.sep))
                 if not path_str.startswith("static/")
@@ -1185,9 +1150,6 @@ def user_avatar(uid: int):
             served = serve_file(fs_path)
             if served:
                 return served
-        # If decode/path check fails, fall through to default.
-
-    # ---- Case B: pic is a normal string path ----
     if isinstance(pic, str) and pic:
         path_str = pic.strip().strip("\x00").strip("'").strip('"')
         fs_path = (
@@ -1199,13 +1161,10 @@ def user_avatar(uid: int):
         if served:
             return served
 
-    # ---- Default file fallback ----
     default_fs = os.path.join(app.static_folder, "avatars", "default.png")
     served = serve_file(default_fs)
     if served:
         return served
-
-    # ---- Final inline SVG fallback (never fails) ----
     initial = (username[:1] or "U").upper()
     svg = f"""<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'>
       <defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'>
@@ -1218,9 +1177,6 @@ def user_avatar(uid: int):
     resp = Response(svg, mimetype="image/svg+xml")
     resp.headers["Cache-Control"] = "no-store"
     return resp
-
-
-#########============================######
 
 # --- Wishlist helpers ---
 
@@ -1296,7 +1252,7 @@ def change_email():
 @app.get('/profile/password')
 @login_required
 def password_form():
-    # Standalone page opened in a new tab
+    # opened in a new tab
     return render_template('change_password.html', user=current_user())
 
 
@@ -1312,22 +1268,22 @@ def change_password():
     new_pw     = (request.form.get('new_password') or '').strip()
     confirm_pw = (request.form.get('confirm_password') or '').strip()
 
-    # 1) Verify current password
+    #  Verify current password
     if not current_pw or not check_password_hash(u['password_hash'], current_pw):
         flash('Current password is incorrect.', 'danger')
         return redirect(url_for('profile'))
 
-    # 3) Confirm match
+    #Confirm match
     if new_pw != confirm_pw:
         flash('New password and confirmation do not match.', 'warning')
         return redirect(url_for('profile'))
 
-    # 4) Don’t allow same-as-old
+    #Don’t allow same-as-old
     if check_password_hash(u['password_hash'], new_pw):
         flash('New password cannot be the same as your current password.', 'info')
         return redirect(url_for('profile'))
 
-    # 5) Update
+    #Update
     try:
         execute("UPDATE user_auth SET password_hash=%s WHERE user_id=%s",
                 (generate_password_hash(new_pw), u['user_id']))
@@ -1340,7 +1296,7 @@ def change_password():
 
 #########============================######
 
-# ---------- Public user card (modal-friendly) ----------
+# ---------- Public user card ----------
 @app.route("/u/<int:uid>", methods=["GET"])
 def user_card(uid: int):
     # Minimal public info
@@ -1352,10 +1308,8 @@ def user_card(uid: int):
     if not u:
         abort(404)
 
-    # Favorites (already have helper)
+    # Favorites 
     favorites = user_favorites(uid)
-
-    # Render modal partial when opened via data-modal / fetch
     is_partial = (request.args.get("partial")
                   or request.headers.get("X-Requested-With") == "fetch")
     template = "user_card_modal.html" if is_partial else "user_public.html"

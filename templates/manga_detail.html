@@ -64,60 +64,121 @@
   </div>
 
   <!-- RIGHT: Reviews -->
-  <aside class="card fade-in">
-    <div class="card-body">
-      <h2 class="card-title">Reviews{% if review_count is defined %} ({{ review_count }}){% endif %}</h2>
-      {% if avg_rating is defined %}
-        <p class="card-sub">Average: {{ '%.1f' % avg_rating }} / 5</p>
-      {% endif %}
-
-      {% if user %}
-        <form method="post" action="{{ url_for('add_review', manga_id=manga.manga_id) }}" class="form">
-          <label class="label">Your rating</label>
-          <div class="row" style="gap:6px;">
-            {% for v in [5,4,3,2,1] %}
-              <label style="display:inline-flex; align-items:center; gap:4px;">
-                <input type="radio" name="rating" value="{{ v }}" required>
-                <span aria-hidden="true">{{ '★' * v }}{{ '☆' * (5 - v) }}</span>
-              </label>
-            {% endfor %}
+  <aside style="flex:0 0 520px; max-width:520px;" data-review-card>
+    <div class="card" style="position:sticky; top:16px;">
+      <div class="card-body rc-wrap">
+        <header class="rc-head">
+          <h2 class="rc-title">Reviews</h2>
+          <div class="rc-sub">
+            <span class="rc-stars">
+              {% set full = (avg_rating|float)|round(0, 'floor')|int if avg_rating is defined else 0 %}
+              {{ '★' * full }}{{ '☆' * (5 - full) }}
+            </span>
+            <span class="rc-meta">
+              {% if avg_rating is defined %}{{ '%.1f' % avg_rating }} / 5{% else %}0.0 / 5{% endif %}
+              · {{ review_count or 0 }} review{{ '' if (review_count or 0) == 1 else 's' }}
+            </span>
           </div>
+        </header>
 
-          <label class="label">Your review</label>
-          <textarea name="body" class="input" rows="4" placeholder="Be honest, but try not to start a war." required></textarea>
-          <button class="btn" type="submit" style="margin-top:8px;">Submit</button>
-        </form>
-      {% else %}
-        <p class="muted">Please <a href="{{ url_for('login', next=request.full_path) }}">log in</a> to review.</p>
-      {% endif %}
+        {% if user %}
+          <form class="form rc-form" method="post" action="{{ url_for('add_review', manga_id=manga.manga_id) }}" novalidate>
+            <label class="label">Your rating</label>
+            <div data-rating-widget class="rc-stars-input">
+              <input type="hidden" name="rating" value="0">
+              <div class="rc-star-row">
+                {% for i in range(1,6) %}
+                  <button type="button" class="rc-star" data-v="{{ i }}" aria-label="{{ i }} star">☆</button>
+                {% endfor %}
+              </div>
+              <span class="rc-hint" data-rating-hint>Click to rate</span>
+            </div>
 
-      <div class="space"></div>
-      <div role="list" aria-label="Reviews">
-        {% if reviews %}
-          {% for r in reviews %}
-            <div class="card" style="margin:0 0 10px; box-shadow:none; border:1px solid var(--border,#e5e7eb);">
-              <div class="card-body" style="padding:10px 12px;">
-                <div class="row" style="justify-content:space-between; gap:8px;">
-                  <strong>{{ r.username or 'Anon' }}</strong>
-                  <span aria-label="Rating">{{ '★' * (r.rating or 0) }}{{ '☆' * (5 - (r.rating or 0)) }}</span>
+            <label class="label">Your review</label>
+            <textarea class="input rc-textarea" name="body" rows="4" required></textarea>
+
+            <button class="btn rc-submit" type="submit">Submit</button>
+          </form>
+        {% else %}
+          <a class="btn outline block" href="{{ url_for('login', next=request.full_path) }}">Log in to write a review</a>
+        {% endif %}
+
+        <div class="rc-divider"></div>
+
+        <div class="rc-list">
+          {% if reviews %}
+            {% for r in reviews %}
+              <article class="rc-item">
+                <div class="rc-item-head">
+                  <strong class="rc-who">{{ r.username or 'Anon' }}</strong>
+                  <span class="rc-stars small">{{ '★' * (r.rating or 0) }}{{ '☆' * (5 - (r.rating or 0)) }}</span>
                 </div>
                 {% if r.created_at %}
-                  <div class="card-sub" style="margin-top:2px;">
+                  <div class="rc-date">
                     {{ r.created_at.strftime('%b %d, %Y') if r.created_at.__class__.__name__ == 'datetime' else r.created_at }}
                   </div>
                 {% endif %}
                 {% if r.body %}
-                  <p style="margin:6px 0 0; white-space:pre-wrap;">{{ r.body }}</p>
+                  <p class="rc-body">{{ r.body }}</p>
                 {% endif %}
-              </div>
-            </div>
-          {% endfor %}
-        {% else %}
-          <p class="muted">No reviews yet. Be the pioneer of opinions.</p>
-        {% endif %}
+              </article>
+            {% endfor %}
+          {% else %}
+            <p class="card-sub">No reviews yet. Be the pioneer of opinions.</p>
+          {% endif %}
+        </div>
       </div>
     </div>
   </aside>
 </div>
+
+<style>
+  [data-review-card] .rc-wrap{display:flex;flex-direction:column;gap:14px}
+  [data-review-card] .rc-title{margin:0;font-size:1.2rem}
+  [data-review-card] .rc-sub{display:flex;align-items:center;gap:8px;color:color-mix(in oklab,var(--text),transparent 35%)}
+  [data-review-card] .rc-stars{font-size:18px;letter-spacing:1px}
+  [data-review-card] .rc-stars.small{font-size:16px}
+  [data-review-card] .rc-meta{font-size:.9rem}
+  [data-review-card] .rc-form{background:color-mix(in oklab,var(--card,#0b0f14),#000 6%);padding:12px;border:1px solid color-mix(in oklab,var(--text),transparent 90%);border-radius:14px}
+  [data-review-card] .rc-stars-input{display:flex;align-items:center;gap:10px;margin:6px 0 10px}
+  [data-review-card] .rc-star-row{display:flex;gap:6px}
+  [data-review-card] .rc-star{font-size:24px;line-height:1;background:transparent;border:0;cursor:pointer;padding:2px 4px;border-radius:10px;transition:transform .1s ease, background .2s ease}
+  [data-review-card] .rc-star:hover{transform:translateY(-1px);background:color-mix(in oklab,var(--text),transparent 92%)}
+  [data-review-card] .rc-hint{font-size:.9rem;color:color-mix(in oklab,var(--text),transparent 40%)}
+  [data-review-card] .rc-textarea{min-height:110px}
+  [data-review-card] .rc-submit{width:100%;margin-top:8px}
+  [data-review-card] .rc-divider{height:1px;background:color-mix(in oklab,var(--text),transparent 90%);margin:6px 0}
+  [data-review-card] .rc-list{display:flex;flex-direction:column;gap:10px}
+  [data-review-card] .rc-item{padding:12px;border:1px solid color-mix(in oklab,var(--text),transparent 90%);border-radius:14px;background:color-mix(in oklab,var(--card,#0b0f14),#000 4%);}
+  [data-review-card] .rc-item-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+  [data-review-card] .rc-who{font-weight:600}
+  [data-review-card] .rc-date{font-size:.85rem;color:color-mix(in oklab,var(--text),transparent 45%);margin-bottom:6px}
+  [data-review-card] .rc-body{margin:0;white-space:pre-wrap;line-height:1.5}
+</style>
+
+<script>
+(function () {
+  const wrap = document.querySelector('[data-review-card] [data-rating-widget]');
+  if (!wrap) return;
+  const input = wrap.querySelector('input[name="rating"]');
+  const stars = Array.from(wrap.querySelectorAll('.rc-star'));
+  const hint = wrap.querySelector('[data-rating-hint]');
+
+  function paint(n){
+    stars.forEach((s,i)=>{ s.textContent = i < n ? '★' : '☆'; });
+    if (hint) hint.textContent = n ? (n + (n===1 ? ' star' : ' stars')) : 'Click to rate';
+  }
+  stars.forEach(st=>{
+    st.addEventListener('click', ()=>{
+      const v = Number(st.dataset.v);
+      input.value = v;
+      paint(v);
+    });
+    st.addEventListener('mouseenter', ()=>paint(Number(st.dataset.v)));
+  });
+  wrap.addEventListener('mouseleave', ()=>paint(Number(input.value||0)));
+  paint(Number(input.value||0));
+})();
+</script>
 
 {% endblock %}
