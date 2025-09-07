@@ -2,62 +2,122 @@
 {% block title %}{{ manga.Title }} · MangaForAll{% endblock %}
 {% block content %}
 
-<div class="hero" style="--hero: url('{{ url_for('static', filename=manga.CoverPath) if manga.CoverPath else url_for('static', filename='placeholder.jpg') }}')">
-  <div class="hero-inner">
-    <div class="cover-hero" style="background-image:url('{{ url_for('static', filename=manga.CoverPath) if manga.CoverPath else url_for('static', filename='placeholder.jpg') }}')"></div>
-    <div>
-      <h1 class="hero-title">{{ manga.Title }}</h1>
-      <div class="hero-meta">
-        <span class="card-sub">By {{ manga.Author_name or "Unknown" }}</span>
-        <span class="badge {{ 'ok' if (manga.publication_status or '')|lower == 'ongoing' else 'warn' }}">
-          {{ (manga.publication_status or 'Unknown')|capitalize }}
-        </span>
-      </div>
+<div class="grid" style="grid-template-columns: 2fr 1fr; gap: var(--gap); align-items:start;">
+  <!-- LEFT: Manga info + chapters -->
+  <div>
+    <div class="hero" style="--hero: url('{{ cover_url }}')">
+      <div class="hero-inner">
+        <div class="cover-hero" style="background-image:url('{{ cover_url }}')"></div>
+        <div>
+          <h1 class="hero-title">{{ manga.Title }}</h1>
+          <div class="hero-meta">
+            <span class="card-sub">By {{ manga.Author_name or "Unknown" }}</span>
+            <span class="badge {{ 'ok' if (manga.publication_status or '')|lower == 'ongoing' else 'warn' }}">
+              {{ (manga.publication_status or 'Unknown')|capitalize }}
+            </span>
+          </div>
 
-      {% if manga.synopsis %}
-        <p class="synopsis">{{ manga.synopsis }}</p>
+          {% if manga.synopsis %}
+            <p class="synopsis">{{ manga.synopsis }}</p>
+          {% endif %}
+
+          <div class="hero-actions">
+            {% if user %}
+              <form method="post" action="{{ url_for('wishlist_toggle', manga_id=manga.manga_id) }}">
+                {% if favorited %}
+                  <button class="btn outline" type="submit">★ Favorited — Remove</button>
+                {% else %}
+                  <button class="btn" type="submit">☆ Add to Favorites</button>
+                {% endif %}
+              </form>
+            {% else %}
+              <a class="btn outline" href="{{ url_for('login', next=request.full_path) }}">Log in to favorite</a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="space"></div>
+
+    <h2>Chapters</h2>
+    {% if chapters %}
+      <table class="table chapters-table">
+        <tbody>
+          {% for ch in chapters %}
+            <tr class="chapter-row"
+                data-href="{{ url_for('reader', folder=folder, chapter=ch, back=request.full_path) }}"
+                tabindex="0" role="link" aria-label="Open {{ ch }}">
+              <td>
+                <a class="chapter-link"
+                   href="{{ url_for('reader', folder=folder, chapter=ch, back=request.full_path) }}">
+                  {{ ch }}
+                </a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>No chapters yet.</p>
+    {% endif %}
+  </div>
+
+  <!-- RIGHT: Reviews -->
+  <aside class="card fade-in">
+    <div class="card-body">
+      <h2 class="card-title">Reviews{% if review_count is defined %} ({{ review_count }}){% endif %}</h2>
+      {% if avg_rating is defined %}
+        <p class="card-sub">Average: {{ '%.1f' % avg_rating }} / 5</p>
       {% endif %}
 
-      <div class="hero-actions">
-        {% if user %}
-          <form method="post" action="{{ url_for('wishlist_toggle', manga_id=manga.manga_id) }}">
-            {% if favorited %}
-              <button class="btn outline" type="submit">★ Favorited — Remove</button>
-            {% else %}
-              <button class="btn" type="submit">☆ Add to Favorites</button>
-            {% endif %}
-          </form>
+      {% if user %}
+        <form method="post" action="{{ url_for('add_review', manga_id=manga.manga_id) }}" class="form">
+          <label class="label">Your rating</label>
+          <div class="row" style="gap:6px;">
+            {% for v in [5,4,3,2,1] %}
+              <label style="display:inline-flex; align-items:center; gap:4px;">
+                <input type="radio" name="rating" value="{{ v }}" required>
+                <span aria-hidden="true">{{ '★' * v }}{{ '☆' * (5 - v) }}</span>
+              </label>
+            {% endfor %}
+          </div>
+
+          <label class="label">Your review</label>
+          <textarea name="body" class="input" rows="4" placeholder="Be honest, but try not to start a war." required></textarea>
+          <button class="btn" type="submit" style="margin-top:8px;">Submit</button>
+        </form>
+      {% else %}
+        <p class="muted">Please <a href="{{ url_for('login', next=request.full_path) }}">log in</a> to review.</p>
+      {% endif %}
+
+      <div class="space"></div>
+      <div role="list" aria-label="Reviews">
+        {% if reviews %}
+          {% for r in reviews %}
+            <div class="card" style="margin:0 0 10px; box-shadow:none; border:1px solid var(--border,#e5e7eb);">
+              <div class="card-body" style="padding:10px 12px;">
+                <div class="row" style="justify-content:space-between; gap:8px;">
+                  <strong>{{ r.username or 'Anon' }}</strong>
+                  <span aria-label="Rating">{{ '★' * (r.rating or 0) }}{{ '☆' * (5 - (r.rating or 0)) }}</span>
+                </div>
+                {% if r.created_at %}
+                  <div class="card-sub" style="margin-top:2px;">
+                    {{ r.created_at.strftime('%b %d, %Y') if r.created_at.__class__.__name__ == 'datetime' else r.created_at }}
+                  </div>
+                {% endif %}
+                {% if r.body %}
+                  <p style="margin:6px 0 0; white-space:pre-wrap;">{{ r.body }}</p>
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
         {% else %}
-          <a class="btn outline" href="{{ url_for('login', next=request.full_path) }}">Log in to favorite</a>
+          <p class="muted">No reviews yet. Be the pioneer of opinions.</p>
         {% endif %}
       </div>
     </div>
-  </div>
+  </aside>
 </div>
-
-<div class="space"></div>
-
-<h2>Chapters</h2>
-{% if chapters %}
-  <table class="table chapters-table">
-    <tbody>
-      {% for ch in chapters %}
-        <tr class="chapter-row"
-            data-href="{{ url_for('reader', folder=folder, chapter=ch, back=request.full_path) }}"
-            tabindex="0" role="link" aria-label="Open {{ ch }}">
-          <td>
-            <a class="chapter-link"
-               href="{{ url_for('reader', folder=folder, chapter=ch, back=request.full_path) }}">
-              {{ ch }}
-            </a>
-          </td>
-        </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-{% else %}
-  <p>No chapters yet.</p>
-{% endif %}
-
 
 {% endblock %}

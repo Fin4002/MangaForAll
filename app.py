@@ -437,6 +437,25 @@ def manga_detail(manga_id):
     manga_ctx["Author_name"] = author_final
     manga_ctx["publication_status"] = status_final
     manga_ctx["synopsis"] = synopsis_text
+    # ── Reviews & average for sidebar ───────────────────────────────────────────
+    reviews = query_all("""
+        SELECT
+            rr.reviews    AS body,
+            rr.ratings    AS rating,
+            rr.created_at AS created_at,
+            u.username    AS username
+        FROM review_rating rr
+        JOIN users u ON u.user_id = rr.user_id
+        WHERE rr.manga_id=%s
+        ORDER BY rr.created_at DESC
+    """, (manga_id,))
+
+    avg_row = query_one("""
+        SELECT COALESCE(AVG(ratings),0) AS avg_rating,
+               COUNT(*)                 AS review_count
+        FROM review_rating
+        WHERE manga_id=%s
+    """, (manga_id,))
 
     return render_template(
         "manga_detail.html",
@@ -446,8 +465,39 @@ def manga_detail(manga_id):
         chapters=chapters,
         meta=meta,
         favorited=favorited,
+        reviews=reviews,
+        avg_rating=float(avg_row["avg_rating"] or 0),
+        review_count=int(avg_row["review_count"] or 0),
         user=current_user()
     )
+# Add-reviews/ratings#
+@app.post("/manga/<int:manga_id>/review")
+@login_required
+def add_review(manga_id):
+    u = current_user()
+    # pull values
+    try:
+        rating = int(request.form.get("rating", 0))
+    except ValueError:
+        rating = 0
+    body = (request.form.get("body") or request.form.get("review") or "").strip()
+
+    # validate
+    if rating < 1 or rating > 5:
+        flash("Rating must be between 1 and 5.", "warning")
+        return redirect(url_for("manga_detail", manga_id=manga_id))
+
+    # one-per-user-per-manga upsert (requires unique index on (manga_id, user_id))
+    execute("""
+        INSERT INTO review_rating (manga_id, user_id, ratings, reviews)
+        VALUES (%s, %s, %s, %s)
+        ON DUPLICATE KEY UPDATE
+            ratings = VALUES(ratings),
+            reviews = VALUES(reviews),
+            created_at = CURRENT_TIMESTAMP
+    """, (manga_id, u["user_id"], rating, body))
+
+    return redirect(url_for("manga_detail", manga_id=manga_id))
 
 @app.route('/profile')
 @login_required
