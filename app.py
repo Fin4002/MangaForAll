@@ -690,6 +690,16 @@ def reader(folder, chapter):
     _num = re.search(r'\d+', chapter)
     chapter_ctx = {"number": _num.group() if _num else chapter, "title": f"{title} · {chapter}"}
 
+    u = current_user()
+    if u:
+            try:
+                execute(
+                    "UPDATE users SET no_of_chapters_read = COALESCE(no_of_chapters_read, 0) + 1 WHERE user_id=%s",
+                    (u["user_id"],)
+                )
+            except Exception as e:
+                # Don't break the reader if the DB update fails
+                print("Failed to update chapter count:", e)
     return render_template("reader.html", folder=folder, chapter=chapter_ctx, pages=pages,
                            prev_chapter=prev_ch, next_chapter=next_ch)
 
@@ -980,22 +990,14 @@ def add_comment(post_id):
 # ---------------------------
 # Moderator tools
 # ---------------------------
-def _safe_redirect(next_url, fallback):
-    # Avoid open redirects; only allow same-path redirects
-    if not next_url:
-        return redirect(fallback)
-    # Optional: allow only relative URLs
-    if urlparse(next_url).netloc:
-        return redirect(fallback)
-    return redirect(next_url)
 
 @app.route("/mod/ban/<int:user_id>", methods=["POST"])
 @moderator_required
 def mod_ban_user(user_id):
     u = current_user()
     if u["user_id"] == user_id:
-        flash("You cannot ban yourself.", "warning")
-        return _safe_redirect(request.form.get("next"), url_for("forum"))
+         flash("You cannot ban yourself.", "warning")
+         return redirect(url_for("forum"))
 
     reason = (request.form.get("reason") or "").strip()
     days = request.form.get("days")
@@ -1011,14 +1013,14 @@ def mod_ban_user(user_id):
         (reason, until, user_id)
     )
     flash("User banned.", "success")
-    return _safe_redirect(request.form.get("next"), request.referrer or url_for("forum"))
+    return redirect(url_for("forum"))
 
 @app.route("/mod/unban/<int:user_id>", methods=["POST"])
 @moderator_required
 def mod_unban_user(user_id):
     execute("UPDATE users SET is_banned=0, ban_reason=NULL, ban_until=NULL WHERE user_id=%s", (user_id,))
     flash("User unbanned.", "success")
-    return _safe_redirect(request.form.get("next"), request.referrer or url_for("forum"))
+    return redirect(url_for("forum"))
 
 @app.route("/mod/posts/<int:post_id>/delete", methods=["POST"])
 @moderator_required
@@ -1026,11 +1028,11 @@ def mod_delete_post(post_id):
     post = query_one("SELECT post_id FROM forum_posts WHERE post_id=%s", (post_id,))
     if not post:
         flash("Post not found.", "warning")
-        return _safe_redirect(request.form.get("next"), url_for("forum"))
+        return redirect(url_for("forum"))
     execute("DELETE FROM forum_comments WHERE post_id=%s", (post_id,))
     execute("DELETE FROM forum_posts WHERE post_id=%s", (post_id,))
     flash("Post deleted.", "success")
-    return _safe_redirect(request.form.get("next"), url_for("forum"))
+    return redirect(url_for("forum"))
 
 #########============================######
 

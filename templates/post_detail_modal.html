@@ -63,4 +63,25 @@
       <p class="card-sub">Please <a href="{{ url_for('login') }}">log in</a> to comment.</p>
     {% endif %}
   </section>
+  {% if user and is_moderator(user) and post.user_id %}
+    {% if not user_id_is_banned(post.user_id) %}
+      <!-- show Ban button -->
+      <form method="post" action="{{ url_for('mod_ban_user', user_id=post.user_id) }}">
+        <input name="reason" class="input" placeholder="Reason (optional)">
+        <input name="days" class="input" type="number" min="0" placeholder="Days (blank=permanent)">
+        <button class="btn warning" type="submit">Ban Author</button>
+      </form>
+    {% else %}
+      <!-- show Unban button -->
+      <form method="post" action="{{ url_for('mod_unban_user', user_id=post.user_id) }}">
+        <button class="btn outline" type="submit">Unban Author</button>
+      </form>
+    {% endif %}
+
+    <form method="post"
+        action="{{ url_for('mod_delete_post', post_id=post.post_id) }}"
+        onsubmit="return confirm('Delete this post and its comments?');">
+      <button class="btn danger" type="submit">Delete Post</button>
+    </form>
+  {% endif %}
 </div>
