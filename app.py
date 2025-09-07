@@ -372,7 +372,6 @@ def manga_list():
         sql = base_sql + " ORDER BY Title ASC"
     mangas = query_all(sql, params)
     return render_template('manga.html', mangas=mangas, q=q, user=current_user())
-
 @app.route('/manga/<int:manga_id>')
 def manga_detail(manga_id):
     m = query_one("SELECT * FROM manga WHERE manga_id=%s", (manga_id,))
@@ -689,9 +688,20 @@ def reader(folder, chapter):
 
     _num = re.search(r'\d+', chapter)
     chapter_ctx = {"number": _num.group() if _num else chapter, "title": f"{title} · {chapter}"}
+    # --- increment chapter count for the logged-in user ---
+    u = current_user()
+    if u:
+        try:
+            execute(
+                "UPDATE users SET no_of_chapters_read = COALESCE(no_of_chapters_read, 0) + 1 WHERE user_id=%s",
+                (u["user_id"],)
+            )
+        except Exception as e:
+            # Don't break the reader if the DB update fails
+            print("Failed to update chapter count:", e)
 
     return render_template("reader.html", folder=folder, chapter=chapter_ctx, pages=pages,
-                           prev_chapter=prev_ch, next_chapter=next_ch)
+                           prev_chapter=prev_ch, next_chapter=next_ch,chapters=siblings)
 
 # ---------------------------
 # Resources → DB sync (manual)
@@ -1246,7 +1256,11 @@ def change_email():
 def password_form():
     # Standalone page opened in a new tab
     return render_template('change_password.html', user=current_user())
-
+@app.get('/chapter-not-found')
+def chapter_not_found():
+    # Back link defaults to home if referrer is missing
+    back = request.args.get('back') or request.referrer or url_for('index')
+    return render_template('chapter_not_found.html', back=back)
 
 @app.route('/profile/password', methods=['POST'])
 @login_required

@@ -35,9 +35,59 @@
   </div>
 </div>
 
-<div class="space"></div>
+<!-- Jump to chapter UI (compact, no button) -->
+<form id="chapter-jump-form" onsubmit="return jumpToChapter(event)" class="form-row" style="margin-bottom:1rem;">
+  <label for="chapterInput" class="card-sub" style="margin-right:.5rem;">Jump:</label>
+  <input id="chapterInput"
+         name="chapter"
+         type="text"
+         placeholder="e.g., 12 or Ch.012"
+         list="chapterList"
+         class="input"
+         style="max-width:12rem;">
+  <datalist id="chapterList">
+    {% for ch in chapters %}
+      <option value="{{ ch }}"></option>
+    {% endfor %}
+  </datalist>
+</form>
+
+
+<script>
+function jumpToChapter(e){
+  e.preventDefault();
+  let raw = (document.getElementById('chapterInput').value || '').trim();
+  if (!raw) return;
+
+  // All known chapters (exact labels from server)
+  const labels = Array.from(document.querySelectorAll('#chapterList option')).map(o => o.value);
+  const labelsLC = labels.map(s => s.toLowerCase());
+
+  // If user typed a bare number (e.g., "12" or "12.5") → "Ch.XXX[.Y]"
+  const num = raw.match(/^\d+(?:\.\d+)?$/);
+  if (num) {
+    const padInt = (s) => s.split('.').map((p,i)=> i ? p : p.padStart(3,'0')).join('.');
+    raw = 'Ch.' + padInt(num[0]);  // 12.5 → Ch.012.5
+  }
+
+  // Case-insensitive exact match only (no fuzzy)
+  const idx = labelsLC.indexOf(raw.toLowerCase());
+  if (idx === -1) {
+    // Not found → redirect to a friendly "not found" page
+    const nf = "{{ url_for('chapter_not_found', back=request.full_path) }}";
+    window.location.href = nf;
+    return false;
+  }
+
+  const chapter = labels[idx];
+  const base = "{{ url_for('reader', folder=folder, chapter='__CH__', back=request.full_path) }}";
+  window.location.href = base.replace('__CH__', encodeURIComponent(chapter));
+}
+</script>
+
 
 <h2>Chapters</h2>
+
 {% if chapters %}
   <table class="table chapters-table">
     <tbody>
@@ -58,6 +108,5 @@
 {% else %}
   <p>No chapters yet.</p>
 {% endif %}
-
 
 {% endblock %}

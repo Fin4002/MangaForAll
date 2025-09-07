@@ -978,3 +978,23 @@ textarea.input{ min-height: 140px; resize: vertical; }
 }
 .chapters-table tr.chapter-row{ cursor:pointer; }
 .chapters-table tr.chapter-row:hover .chapter-link{ text-decoration: underline; }
+.reader-toolbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 8px 12px;
+  background: rgba(15, 15, 20, 0.95); /* semi-opaque dark */
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.reader-wrap {
+  margin-top: 60px; /* push content down so it's not hidden behind toolbar */
+}
+/* YESSSSSSSSSSSSS 1000 reached hahahahaha */

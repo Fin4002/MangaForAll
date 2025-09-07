@@ -2,13 +2,33 @@
 {% block title %}Reader · {{ chapter.title }}{% endblock %}
 
 {% block content %}
+
   <div class="reader-wrap">
     <h1 class="page-title center">{{ chapter.title }}</h1>
-
+  <!-- ========================= ADDED: Compact "Jump to chapter" UI (no button) ========================= -->
+    <!-- Place: directly under the Back link, before the Prev/Next controls -->
+    <!-- Needs: `chapters` list in the template context (see note below about app.py) -->
+  <form id="chapter-jump-form" onsubmit="return jumpToChapter(event)" class="form-row" style="margin:8px 0 12px;">
+      <input id="chapterInput"
+             name="chapter"
+             type="text"
+             placeholder="e.g., 12, 12.5, or Ch.012"
+             list="chapterList"
+             class="input"
+             style="max-width:12rem;">
+      <datalist id="chapterList">
+        {% for ch in chapters %}
+          <option value="{{ ch }}"></option>
+        {% endfor %}
+      </datalist>
+    </form>
+    <!-- ========================= /ADDED ================================================================ -->
     {% set back_url = request.args.get('back') or request.referrer or url_for('content_dashboard') %}
     <div style="margin:12px 0;">
       <a class="btn ghost" href="{{ back_url }}" onclick="if (history.length > 1) { history.back(); return false; }">← Back</a>
     </div>
+
+  
 
     <div class="row" style="justify-content:space-between; margin:12px 0;">
       {% if prev_chapter %}
@@ -56,6 +76,40 @@
     window.READER_PAGES = {{ pages|tojson|safe }};
     window.READER_INDEX = 0;
   </script>
+
+  <!-- ========================= ADDED: Jump-to-chapter script (compact, decimal-aware, 404-redirect) ===== -->
+  <script>
+  function jumpToChapter(e){
+    e.preventDefault();
+    let raw = (document.getElementById('chapterInput').value || '').trim();
+    if (!raw) return;
+
+    // Known chapter labels from server (exact strings like "Ch.012", "Ch.012.5", etc.)
+    const labels = Array.from(document.querySelectorAll('#chapterList option')).map(o => o.value);
+    const labelsLC = labels.map(s => s.toLowerCase());
+
+    // If user typed only numbers (e.g., "12" or "12.5"), normalize to "Ch.XXX[.Y]"
+    const num = raw.match(/^\d+(?:\.\d+)?$/);
+    if (num) {
+      const padInt = (s) => s.split('.').map((p,i)=> i ? p : p.padStart(3,'0')).join('.');
+      raw = 'Ch.' + padInt(num[0]);  // "12.5" => "Ch.012.5", "7" => "Ch.007"
+    }
+
+    // Case-insensitive exact match only (no fuzzy)
+    const idx = labelsLC.indexOf(raw.toLowerCase());
+    if (idx === -1) {
+      // Not found → go to friendly page
+      const nf = "{{ url_for('chapter_not_found', back=request.full_path) }}";
+      window.location.href = nf;
+      return false;
+    }
+
+    const chapter = labels[idx];
+    const base = "{{ url_for('reader', folder=folder, chapter='__CH__', back=request.full_path) }}";
+    window.location.href = base.replace('__CH__', encodeURIComponent(chapter));
+  }
+  </script>
+  <!-- ========================= /ADDED =================================================================== -->
 
   <!-- Pop-out -->
   <div
